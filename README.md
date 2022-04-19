@@ -19,11 +19,13 @@ In order to train all this, we will use the [RICO](https://interactionmining.org
 ## Research Steps
 - **Dataset Creation**
   - Defining the core representation and normalize the data.
+  - Split the dataset.
   - Create the triplets using a pre defined metric.
 
 - **Model Training**
   - Defining which models we want to use and implement the code.
   - Implement the training script that uses multiple losses.
+    - Use pre-trained vectors as target / as triplet metric. 
 
 - **Analysis**
   - Ablation study of different models.
