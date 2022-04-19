@@ -7,11 +7,12 @@ from torch.utils.data import Dataset
 
 
 class RICOSemanticAnnotationsDataset(Dataset):
-    def __init__(self, root_dir: Path, transform=None):
+    def __init__(self, root_dir: Path, transform=None, only_data: bool = False):
         
         self.files = list((root_dir / 'semantic_annotations').glob('*.json'))
         self.root_dir = root_dir
         self.transform = transform
+        self._only_bool = only_data
         
     def __len__(self):
         return len(self.files)
@@ -21,8 +22,11 @@ class RICOSemanticAnnotationsDataset(Dataset):
         with open(self.files[idx], 'r') as fp:
             json_file = json.load(fp)
             
-        image = io.imread(self.files[idx].with_suffix('.png'))[:,: , :3] # Removing the Alpha channel
-        sample = {'data': json_file, 'image': image}
+        sample = {'data': json_file, 'filename': self.files[idx].stem}
+        if not self._only_bool:
+            image = io.imread(self.files[idx].with_suffix('.png'))[:,: , :3] # Removing the Alpha channel
+            sample['image'] = image            
+            
         if self.transform:
             sample = self.transform(sample)
         
