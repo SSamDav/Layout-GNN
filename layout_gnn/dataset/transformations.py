@@ -9,7 +9,9 @@ def process_data(sample: Dict[str, Any]) -> Dict[str, Any]:
         return {
             'bbox': root['bounds'],
             'label': root.get('componentLabel', 'No Label'),
-            'children': [process_tree(child) for child in root.get('children', [])]
+            'children': [process_tree(child) for child in root.get('children', [])],
+            'icon_label': root.get('iconClass', None),
+            'text_button_label': root.get('textButtonClass', None)
         }
     
     return {

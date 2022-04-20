@@ -16,6 +16,11 @@
 *.vcf
 *.xml
 data/*
+!data/component_legend.json
+!data/file_with_error.json
+!data/icon_legend.json
+!data/textButton_legend.json
+
 
 ### JupyterNotebooks ###
 # gitignore template for Jupyter Notebooks
