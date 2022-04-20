@@ -1,7 +1,10 @@
+from typing import Any, Dict, List
+
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
+from torch_geometric.data import Batch
 
 
 def plot_datapoint(datapoint, color_label_map):
@@ -33,6 +36,10 @@ def draw_screen(root, ax, color_label_map):
 
 def default_data_collate(batch):
     return batch
+
+
+def pyg_data_collate(batch: List[Dict[str, Any]]) -> Batch:
+    return Batch.from_data_list([sample["graph"] for sample in batch])
 
 
 def draw_class_image(image_shape, node_labels, datapoint, img_class=None):
