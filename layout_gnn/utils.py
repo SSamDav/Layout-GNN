@@ -4,24 +4,31 @@ import networkx as nx
 import numpy as np
 
 
-def plot_datapoint(datapoint, color_label_map, color_node_map):
+def plot_datapoint(datapoint, color_label_map):
+    color_node_map = [
+        color_label_map.get(data['label'], {'hex':'#000000'})['hex']
+        for _, data in list(datapoint['graph'].nodes(data=True))
+    ]
     fig, axes = plt.subplots(1, 3, figsize=(30, 10))
     axes[1].invert_yaxis()
     draw_screen(datapoint['data'], axes[1], color_label_map)
-    axes[2].imshow(datapoint['image'])
+    if datapoint.get('image'):
+        axes[2].imshow(datapoint['image'])
     nx.draw(datapoint['graph'], node_color=color_node_map, ax=axes[0])
     return fig
     
     
-def draw_screen(root, ax, color_label_map, queue=[]):
-    queue.extend(root.get('children', []))
-    while queue:
-        child = queue.pop(0)
-    
-        w, h = child['bbox'][2] - child['bbox'][0], child['bbox'][3] - child['bbox'][1]
-        rect = patches.Rectangle((child['bbox'][0], child['bbox'][1]), w, h, facecolor=color_label_map[child['label']])
-        ax.add_patch(rect)
-        draw_screen(child, ax, color_label_map, queue=queue)
+def draw_screen(root, ax, color_label_map):
+    stack = [root]
+    while stack:
+        current_node = stack.pop(0)
+        stack.extend(reversed(current_node['children']))
+        
+        w, h = current_node['bbox'][2] - current_node['bbox'][0], current_node['bbox'][3] - current_node['bbox'][1]
+        color = color_label_map.get(current_node['label'], None)
+        if color:
+            rect = patches.Rectangle((current_node['bbox'][0], current_node['bbox'][1]), w, h, facecolor=color['hex'])
+            ax.add_patch(rect)
         
 
 def default_data_collate(batch):
