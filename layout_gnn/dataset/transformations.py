@@ -1,11 +1,14 @@
 from typing import Any, Dict
+
 import networkx as nx
+from skimage import transform
+
 
 def process_data(sample: Dict[str, Any]) -> Dict[str, Any]:
     def process_tree(root):
         return {
             'bbox': root['bounds'],
-            'label': root.get('componentLabel', 'Screen'),
+            'label': root.get('componentLabel', 'No Label'),
             'children': [process_tree(child) for child in root.get('children', [])]
         }
     
@@ -56,3 +59,15 @@ def add_networkx(sample: Dict[str, Any]) -> Dict[str, Any]:
         **sample,
         'graph': G
     }
+    
+    
+class RescaleImage():
+    def __init__(self, width: int, height: int):
+        self.w = width
+        self.h = height
+        
+    def __call__(self, sample):
+        return {
+            **sample,
+            'image': transform.resize(sample['image'], (self.h, self.w))
+        }
