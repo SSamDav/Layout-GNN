@@ -7,7 +7,7 @@ from torch_geometric.nn import GCN, MLP
 from torch_geometric.nn.models.basic_gnn import BasicGNN
 
 
-class Model(nn.Module):
+class LayoutGraphModel(nn.Module):
     def __init__(
         self,
         num_labels: int,
