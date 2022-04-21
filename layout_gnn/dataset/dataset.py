@@ -34,16 +34,8 @@ class RICOSemanticAnnotationsDataset(Dataset):
         self.icon_label_color_map = json.load(open(self.data_path / 'icon_legend.json', 'r'))
         self.text_button_color_map = json.load(open(self.data_path / 'textButton_legend.json', 'r'))
         
-        icon_rgb = icon_rgb = np.asarray([v['rgb'] for v in self.icon_label_color_map.values()]).mean(axis=0).astype(int)
-        self.label_color_map['Icon'] = {
-            'hex': '#%02x%02x%02x' % (icon_rgb[0], icon_rgb[1], icon_rgb[2]),
-            'rgb': [icon_rgb[0], icon_rgb[1], icon_rgb[2]]
-        }
-        text_button_rgb = np.asarray([v['rgb'] for v in self.text_button_color_map.values()]).mean(axis=0).astype(int)
-        self.label_color_map['Text Button'] = {
-            'hex': '#%02x%02x%02x' % (text_button_rgb[0], text_button_rgb[1], text_button_rgb[2]),
-            'rgb': [text_button_rgb[0], text_button_rgb[1], text_button_rgb[2]]
-        }
+        self.label_color_map['Icon'] = next(iter(self.icon_label_color_map.values()))
+        self.label_color_map['Text Button'] = next(iter(self.text_button_color_map.values()))
         
         
     def __len__(self):
