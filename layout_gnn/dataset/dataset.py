@@ -17,7 +17,7 @@ class RICOSemanticAnnotationsDataset(Dataset):
     def __init__(self, root_dir: Optional[Path] = None, transform=None, only_data: bool = False):
         self.data_path = root_dir or DATA_PATH
         self.transform = transform
-        self._only_bool = only_data
+        self._only_data = only_data
         self.data_path.mkdir(parents=True, exist_ok=True)
         
         zip_filename = self.data_path / 'semantic_annotations.zip'
@@ -52,7 +52,7 @@ class RICOSemanticAnnotationsDataset(Dataset):
             json_file = json.load(fp)
             
         sample = {'data': json_file, 'filename': self.files[idx].stem}
-        if not self._only_bool:
+        if not self._only_data:
             image = io.imread(self.files[idx].with_suffix('.png'))[:,: , :3] # Removing the Alpha channel
             sample['image'] = image            
             
