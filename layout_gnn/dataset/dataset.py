@@ -20,11 +20,13 @@ class RICOSemanticAnnotationsDataset(Dataset):
         self._only_bool = only_data
         self.data_path.mkdir(parents=True, exist_ok=True)
         
-        client = storage.Client.create_anonymous_client()
-        bucket = client.bucket(BUCKET_ID)
-
-        blob = bucket.blob('rico_dataset_v0.1/semantic_annotations.zip')
-        blob.download_to_filename(self.data_path / 'semantic_annotations.zip')
+        zip_filename = self.data_path / 'semantic_annotations.zip'
+        if not zip_filename.exists():
+            client = storage.Client.create_anonymous_client()
+            bucket = client.bucket(BUCKET_ID)
+  
+            blob = bucket.blob('rico_dataset_v0.1/semantic_annotations.zip')
+            blob.download_to_filename(zip_filename)
         
         self._file_with_errors = json.load(open(self.data_path / 'file_with_error.json', 'r'))
         self.files = list(f for f in sorted((self.data_path / 'semantic_annotations').glob('*.json')) if f.stem not in self._file_with_errors)
