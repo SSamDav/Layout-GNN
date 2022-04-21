@@ -7,6 +7,7 @@ from pytorch_lightning import LightningModule
 
 
 class EncoderDecoderWithTripletLoss(LightningModule):
+    """LightningModule to train the graph layout encoder with a combination of triplet and reconstruction loss."""
     def __init__(
         self, 
         encoder: nn.Module, 
@@ -17,6 +18,21 @@ class EncoderDecoderWithTripletLoss(LightningModule):
         recunstruction_loss_weight: float = 1.0,
         lr: float = 0.001,
     ):
+        """
+        Args:
+            encoder (nn.Module): Model that receives the layout graphs and returns the embeddings.
+            decoder (nn.Module, optional): Model that resonstructs the layout image from the embedding. If not
+                provided, the reconstruction loss is not considered.
+            triplet_loss_distance_function (Callable[[torch.Tensor, torch.Tensor], torch.Tensor], optional): the 
+                distance metric to be used in the triplet loss. If not provided, euclidean distance is used.
+            triplet_loss_margin (float, optional): Margin of the triplet loss. Defaults to 1.0.
+            triplet_loss_swap (bool, optional): If True, and if the positive example is closer to the negative example
+                than the anchor is, swaps the positive example and the anchor in the loss computation (see "Learning 
+                shallow convolutional feature descriptors with triplet losses" by V. Balntas et al). Defaults to False.
+            recunstruction_loss_weight (float, optional): Weight of the reconstruction loss relative to the triplet 
+                loss. Defaults to 1.0.
+            lr (float, optional): Learning rate. Defaults to 0.001.
+        """
         super().__init__()
         self.encoder = encoder
         self.decoder = decoder
