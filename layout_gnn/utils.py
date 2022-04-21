@@ -24,7 +24,7 @@ def plot_datapoint(datapoint: Dict[str, Any],
     fig, axes = plt.subplots(1, 3, figsize=(30, 10))
     axes[1].invert_yaxis()
     draw_screen(datapoint['data'], axes[1], color_label_map)
-    if datapoint.get('image'):
+    if datapoint.get('image', None) is not None:
         axes[2].imshow(datapoint['image'])
     nx.draw(datapoint['graph'], node_color=color_node_map, ax=axes[0])
     return fig
@@ -42,13 +42,18 @@ def draw_screen(root: Dict[str, Any],
     """    
     stack = [root]
     while stack:
-        current_node = stack.pop()
+        current_node = stack.pop(0)
         stack.extend(current_node['children'])
         
         w, h = current_node['bbox'][2] - current_node['bbox'][0], current_node['bbox'][3] - current_node['bbox'][1]
         color = color_label_map.get(current_node['label'], None)
         if color:
-            rect = patches.Rectangle((current_node['bbox'][0], current_node['bbox'][1]), w, h, facecolor=color['hex'])
+            rect = patches.Rectangle((current_node['bbox'][0], current_node['bbox'][1]), 
+                                      w, 
+                                      h, 
+                                      facecolor=color['hex'],
+                                      edgecolor='w',
+                                      linewidth=1)
             ax.add_patch(rect)
         
 

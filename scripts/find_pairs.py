@@ -92,7 +92,7 @@ if __name__ == '__main__':
     dataset = sorted(dataset, key=lambda x: x['filename'])
     
     dataset_indexes = list(range(len(dataset)))
-    comput_func = partial(comput_pairs, dataset)
+    comput_func = partial(compute_pairs, dataset)
     sub_set = dataset_indexes[:10000]
     with Pool(30) as p:
         results = list(tqdm(p.imap(comput_func, sub_set), total=len(sub_set)))
