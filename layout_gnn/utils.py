@@ -1,9 +1,11 @@
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import numpy.typing as npt
+from torch_geometric.data import Batch
 
 
 def plot_datapoint(datapoint: Dict[str, Any],
@@ -59,6 +61,11 @@ def draw_screen(root: Dict[str, Any],
 
 def default_data_collate(batch):
     return batch
+
+
+def pyg_data_collate(batch: List[Dict[str, Any]]) -> Batch:
+    """Creates a torch_geometric Batch from a list of samples."""
+    return Batch.from_data_list([sample["graph"] for sample in batch])
 
 
 def draw_class_image(image_shape: Tuple[int, int],

@@ -1,7 +1,8 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import networkx as nx
 from skimage import transform
+from torch_geometric.utils import from_networkx
 
 
 def process_data(sample: Dict[str, Any]) -> Dict[str, Any]:
@@ -99,3 +100,32 @@ class RescaleImage:
             **sample,
             'image': transform.resize(sample['image'], (self.h, self.w))
         }
+
+
+class ConvertLabelsToIndexes:
+    """Converts the "label" attributes in nodes and edges from a string to an int, according to the given mappings."""
+    def __init__(
+        self, 
+        node_label_mappings: Optional[Dict[str, int]] = None, 
+        edge_label_mappings: Optional[Dict[str, int]] = None,
+    ):
+        self.node_label_mappings = node_label_mappings
+        self.edge_label_mappings = edge_label_mappings
+
+    def __call__(self, sample: Dict[str, Any]) -> Dict[str, Any]:
+        g: nx.DiGraph = sample["graph"]
+
+        if self.node_label_mappings:
+            for _, attrs in g.nodes(data=True):
+                attrs["label"] = self.node_label_mappings.get(attrs["label"], len(self.node_label_mappings))
+        if self.edge_label_mappings:
+            for _, _, attrs in g.edges(data=True):
+                attrs["label"] = self.edge_label_mappings.get(attrs["label"], len(self.edge_label_mappings))
+
+        return sample
+
+
+def convert_graph_to_pyg(sample: Dict[str, Any]) -> Dict[str, Any]:
+    """Converts the networkx graph to a torch_geometric graph."""
+    sample["graph"] = from_networkx(sample["graph"])
+    return sample
