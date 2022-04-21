@@ -83,6 +83,12 @@ if __name__ == '__main__':
     for data in tqdm(dataloader):
         dataset.extend(data)
         
+    with open(DATA_PATH / 'train_split.json', 'r') as fp:
+        train_split = json.load(fp)
+        
+    train_datapoints = [f[:-4] for f in train_split['train_uis']]
+    
+    dataset = list(filter(lambda x: x['filename'] in train_datapoints, dataset))
     dataset = sorted(dataset, key=lambda x: x['filename'])
     
     dataset_indexes = list(range(len(dataset)))
