@@ -131,20 +131,20 @@ class CNNNeuralRasterizer(nn.Module):
         
         layers, in_channel = [], self.input_dim
         for i in reversed(range(self.number_layers)):
-            out_channel_multiplier = 2**i
+            out_channel = self.hidden_dim * 2**i
             layers.extend([
                 nn.ConvTranspose2d(
                     in_channels=in_channel,
-                    out_channels=self.hidden_dim * out_channel_multiplier,
+                    out_channels=out_channel,
                     kernel_size=4, 
                     stride=1 if len(layers) == 0 else 2, 
                     padding=0 if len(layers) == 0 else 1, 
                     bias=False
                 ),
-                nn.BatchNorm2d(self.hidden_dim * out_channel_multiplier),
+                nn.BatchNorm2d(out_channel),
                 nn.SELU(True),
             ])
-            in_channel = self.hidden_dim * out_channel_multiplier
+            in_channel = out_channel
 
         layers.extend([
             nn.ConvTranspose2d(
