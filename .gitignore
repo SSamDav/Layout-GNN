@@ -20,6 +20,8 @@ data/*
 !data/file_with_error.json
 !data/icon_legend.json
 !data/textButton_legend.json
+!data/train_split.json
+
 
 
 ### JupyterNotebooks ###

@@ -113,7 +113,7 @@ def compute_edit_distance(G1, G2) -> Dict[str, float]:
     return {'edit_distance': cost, 'normalized_edit_distance': normalized_cost}
 
 
-def compute_iou(datapoint1: Dict[str, Any], datapoint2: Dict[str, Any], resolution: Tuple[int, int] = (256, 256)) -> float:
+def compute_iou(datapoint1: Dict[str, Any], datapoint2: Dict[str, Any], resolution: Tuple[int, int] = (256, 256)) -> Dict[str, float]:
     """Computes the Intersection over Union of two datapoints.
 
     Args:
@@ -122,7 +122,7 @@ def compute_iou(datapoint1: Dict[str, Any], datapoint2: Dict[str, Any], resoluti
         resolution (Tuple[int, int], optional): Resolution used to compute the IoU. Defaults to (256, 256).
 
     Returns:
-        float: IoU
+        Dict[str, float]: IoU
     """    
     node_labels = sorted(list(set(node['label'] for _, node in datapoint1['graph'].nodes(data=True)) | 
                               set(node['label'] for _, node in datapoint2['graph'].nodes(data=True))))
@@ -136,4 +136,4 @@ def compute_iou(datapoint1: Dict[str, Any], datapoint2: Dict[str, Any], resoluti
     indexes = np.where(union != 0)
     iou = intersection[indexes].mean()
     
-    return iou
+    return {'iou': iou}
