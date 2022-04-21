@@ -28,8 +28,13 @@ class RICOSemanticAnnotationsDataset(Dataset):
             blob = bucket.blob('rico_dataset_v0.1/semantic_annotations.zip')
             blob.download_to_filename(zip_filename)
         
+        extracted_folder = self.data_path / 'semantic_annotations'
+        if not extracted_folder.exists():
+            with zipfile.ZipFile(zip_filename, 'r') as zip_ref:
+                zip_ref.extractall(self.data_path)
+
         self._file_with_errors = json.load(open(self.data_path / 'file_with_error.json', 'r'))
-        self.files = list(f for f in sorted((self.data_path / 'semantic_annotations').glob('*.json')) if f.stem not in self._file_with_errors)
+        self.files = list(f for f in sorted((extracted_folder).glob('*.json')) if f.stem not in self._file_with_errors)
         self.label_color_map = json.load(open(self.data_path / 'component_legend.json', 'r'))
         self.icon_label_color_map = json.load(open(self.data_path / 'icon_legend.json', 'r'))
         self.text_button_color_map = json.load(open(self.data_path / 'textButton_legend.json', 'r'))
