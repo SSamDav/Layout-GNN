@@ -1,12 +1,25 @@
 from typing import Any, Dict
+
 import networkx as nx
+from skimage import transform
+
 
 def process_data(sample: Dict[str, Any]) -> Dict[str, Any]:
+    """Process the raw data by selection only the usefull fields.
+
+    Args:
+        sample (Dict[str, Any]): Raw sample.
+
+    Returns:
+        Dict[str, Any]: Processed sample.
+    """    
     def process_tree(root):
         return {
             'bbox': root['bounds'],
-            'label': root.get('componentLabel', 'Screen'),
-            'children': [process_tree(child) for child in root.get('children', [])]
+            'label': root.get('componentLabel', 'No Label'),
+            'children': [process_tree(child) for child in root.get('children', [])],
+            'icon_label': root.get('iconClass', None),
+            'text_button_label': root.get('textButtonClass', None)
         }
     
     return {
@@ -16,6 +29,14 @@ def process_data(sample: Dict[str, Any]) -> Dict[str, Any]:
     
     
 def normalize_bboxes(sample: Dict[str, Any]) -> Dict[str, Any]:
+    """Normalizes the bounding boxes.
+
+    Args:
+        sample (Dict[str, Any]): Sample to be processed.
+
+    Returns:
+        Dict[str, Any]: Processed sample.
+    """    
     def normalize_bbox(root, w_factor, h_factor):
         return {
             **root,
@@ -38,6 +59,14 @@ def normalize_bboxes(sample: Dict[str, Any]) -> Dict[str, Any]:
     
     
 def add_networkx(sample: Dict[str, Any]) -> Dict[str, Any]:
+    """Adds a networkx graph.
+
+    Args:
+        sample (Dict[str, Any]): Sample to be processed.
+
+    Returns:
+        Dict[str, Any]: Processed sample.
+    """    
     def convert_networkx(root, graph, parent_node):
         graph.add_node(graph.number_of_nodes() + 1, bbox=root['bbox'], label=root['label'])
         if parent_node:
@@ -56,3 +85,17 @@ def add_networkx(sample: Dict[str, Any]) -> Dict[str, Any]:
         **sample,
         'graph': G
     }
+    
+    
+class RescaleImage:
+    """Recales the image to a specified width and height.
+    """    
+    def __init__(self, width: int, height: int):
+        self.w = width
+        self.h = height
+        
+    def __call__(self, sample):
+        return {
+            **sample,
+            'image': transform.resize(sample['image'], (self.h, self.w))
+        }
