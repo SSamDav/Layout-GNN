@@ -42,8 +42,8 @@ def draw_screen(root: Dict[str, Any],
     """    
     stack = [root]
     while stack:
-        current_node = stack.pop(0)
-        stack.extend(reversed(current_node['children']))
+        current_node = stack.pop()
+        stack.extend(current_node['children'])
         
         w, h = current_node['bbox'][2] - current_node['bbox'][0], current_node['bbox'][3] - current_node['bbox'][1]
         color = color_label_map.get(current_node['label'], None)
