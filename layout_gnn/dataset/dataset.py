@@ -50,7 +50,7 @@ class RICOSemanticAnnotationsDataset(Dataset):
     def _get_item(self, idx: int, only_data: Optional[bool] = None):
         if only_data is None:
             only_data = self._only_data
-        
+
         with open(self.files[idx], 'r') as fp:
             json_file = json.load(fp)
             
@@ -84,13 +84,18 @@ class RICOTripletsDataset(RICOSemanticAnnotationsDataset):
                 triplets = json.load(f)
         self.triplets = triplets
         self.triplet_metric = triplet_metric
+        self.file_name_to_idx = {k.stem: i for i, k in enumerate(self.files)}
 
     def __len__(self):
         return len(self.triplets)
 
     def __getitem__(self, idx):
+        anchor_idx = self.file_name_to_idx[self.triplets[idx]["anchor"]]
+        pos_idx = self.file_name_to_idx[self.triplets[idx][f"pos_{self.triplet_metric}"]["pair"]]
+        neg_idx = self.file_name_to_idx[self.triplets[idx][f"neg_{self.triplet_metric}"]["pair"]]
+        
         return {
-            "anchor": self._get_item(int(self.triplets[idx]["anchor"])),
-            "pos": self._get_item(int(self.triplets[idx][f"pos_{self.triplet_metric}"]["pair"]), only_data=True),
-            "neg": self._get_item(int(self.triplets[idx][f"neg_{self.triplet_metric}"]["pair"]), only_data=True),
+            "anchor": self._get_item(anchor_idx),
+            "pos": self._get_item(pos_idx, only_data=True),
+            "neg": self._get_item(neg_idx, only_data=True),
         }
