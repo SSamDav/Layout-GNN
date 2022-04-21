@@ -26,7 +26,7 @@ GED_NEG_THRESH = lambda x: x > 0.66
 GED_POS_THRESH = lambda x: x < 0.35
 
 
-def comput_pairs(dataset, anchor_dataset_idx):
+def compute_pairs(dataset, anchor_dataset_idx):
     datapoint = {
         'anchor': dataset[anchor_dataset_idx]['filename']
     }
