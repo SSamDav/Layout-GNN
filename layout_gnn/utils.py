@@ -1,10 +1,22 @@
+from typing import Any, Dict, Optional, Tuple
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
+import numpy.typing as npt
 
 
-def plot_datapoint(datapoint, color_label_map):
+def plot_datapoint(datapoint: Dict[str, Any],
+                   color_label_map: Dict[str, Dict[str, str]]) -> plt.figure:
+    """Draws the graph, the screen rendering and the screen image (when available).
+
+    Args:
+        datapoint (Dict[str, Any]): Datapoint to be drawn.
+        color_label_map (Dict[str, Dict[str, str]]): Color map for each label.
+
+    Returns:
+        plt.figure: Figure with all the drawings
+    """    
     color_node_map = [
         color_label_map.get(data['label'], {'hex':'#000000'})['hex']
         for _, data in list(datapoint['graph'].nodes(data=True))
@@ -18,7 +30,16 @@ def plot_datapoint(datapoint, color_label_map):
     return fig
     
     
-def draw_screen(root, ax, color_label_map):
+def draw_screen(root: Dict[str, Any],
+                ax: plt.Axes, 
+                color_label_map: Dict[str, Dict[str, Any]]):
+    """Draw the screen using hierarchical data.
+
+    Args:
+        root (Dict[str, Any]): Root node to the hierarchical tree.
+        ax (plt.Axes): Axe where the screen is drawn.
+        color_label_map (Dict[str, Dict[str, Any]]): Color to be used for each label.
+    """    
     stack = [root]
     while stack:
         current_node = stack.pop(0)
@@ -35,7 +56,21 @@ def default_data_collate(batch):
     return batch
 
 
-def draw_class_image(image_shape, node_labels, datapoint, img_class=None):
+def draw_class_image(image_shape: Tuple[int, int],
+                     node_labels: Dict[str, Any],
+                     datapoint: Dict[str, Any],
+                     img_class: Optional[npt.ArrayLike] = None) -> np.ndarray:
+    """Creates an class image, one hot image where the 3rd dimention correspond to class labels.
+
+    Args:
+        image_shape (Tuple[int, int]): Image shape.
+        node_labels (Dict[str, Any]): Mapping label to int.
+        datapoint (Dict[str, Any]): Datapoint used to compute the class image.
+        img_class (Optional[npt.ArrayLike], optional): Current image class. Defaults to None.
+
+    Returns:
+        np.ndarray: Image class.
+    """    
     x0, y0, x1, y1 = datapoint['bbox']
     x0, x1 = int(image_shape[0]*x0), int(image_shape[0]*x1)
     y0, y1 = int(image_shape[1]*y0), int(image_shape[1]*y1)
