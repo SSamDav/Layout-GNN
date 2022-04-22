@@ -1,10 +1,13 @@
 from re import S
-from typing import Callable
+from typing import Callable, Optional, Sequence, Type, Union
 
 import torch
 import torch.nn as nn
 from pytorch_lightning import LightningModule
+from torch_geometric.data import Data
+from torch_geometric.nn import GCN, global_mean_pool
 
+from layout_gnn.model.model import LayoutGraphModel, CNNNeuralRasterizer
 
 class EncoderDecoderWithTripletLoss(LightningModule):
     """LightningModule to train the graph layout encoder with a combination of triplet and reconstruction loss."""
@@ -58,7 +61,10 @@ class EncoderDecoderWithTripletLoss(LightningModule):
 
         triplet_loss = self.triplet_loss(z, zp, zn)
         if self.decoder is not None:
-            y_pred, y_true = self.decoder(z), batch["image"]
+            # We need to add to dimensions to z: the height and width of the image
+            y_pred = self.decoder(z.unsqueeze(-1).unsqueeze(-1))
+            # The target images are in the format [batch, size, size, dim], but we need [batch, dim, size, size]
+            y_true = batch["image"].transpose(1, -1)
             reconstruction_loss = self.reconstruction_loss_weight * self.reconstruction_loss(y_pred, y_true)
             loss = triplet_loss + reconstruction_loss
             return loss, triplet_loss, reconstruction_loss
@@ -97,3 +103,80 @@ class EncoderDecoderWithTripletLoss(LightningModule):
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=self.lr)
+
+
+class LayoutGraphModelCNNNeuralRasterizer(EncoderDecoderWithTripletLoss):
+    """Extends `EncoderDecoderWithTripletLoss` to instantiate the encoder and decoder models and log hparams."""
+    # TODO: Review defaults
+    def __init__(
+        self,
+        num_labels: int,
+        label_embedding_dim: int = 32,
+        bbox_embedding_layer_dims: Union[Sequence[int], int] = 32,
+        gnn_hidden_channels: int = 128,
+        gnn_num_layers: int = 3,
+        gnn_out_channels: Optional[int] = None,
+        gnn_model_cls: Type[nn.Module] = GCN,
+        use_edge_attr: bool = False,
+        num_edge_labels: Optional[int] = None,
+        edge_label_embedding_dim: Optional[int] = None,
+        readout: Optional[Callable[[torch.Tensor, Data], torch.Tensor]] = None,
+        cnn_output_dim: Optional[int] = None,
+        cnn_hidden_dim: int = 8,
+        cnn_output_size: int = None,
+        decoder: nn.Module = None,
+        triplet_loss_distance_function: Callable[[torch.Tensor, torch.Tensor], torch.Tensor] = None,
+        triplet_loss_margin: float = 1,
+        triplet_loss_swap: bool = False,
+        reconstruction_loss_weight: float = 1,
+        lr: float = 0.001,
+        **kwargs
+    ):
+        if readout is None:
+            # The readout is mandatory in this setup
+            readout = lambda x, inputs: global_mean_pool(x, batch=inputs.batch)
+
+        encoder = LayoutGraphModel(
+            num_labels=num_labels,
+            label_embedding_dim=label_embedding_dim,
+            bbox_embedding_layer_dims=bbox_embedding_layer_dims,
+            gnn_hidden_channels=gnn_hidden_channels,
+            gnn_num_layers=gnn_num_layers,
+            gnn_out_channels=gnn_out_channels,
+            gnn_model_cls=gnn_model_cls,
+            use_edge_attr=use_edge_attr,
+            num_edge_labels=num_edge_labels,
+            edge_label_embedding_dim=edge_label_embedding_dim,
+            readout=readout,
+            **kwargs,
+        )
+        if cnn_output_dim is not None and cnn_output_size is not None:
+            decoder = CNNNeuralRasterizer(
+                input_dim=gnn_out_channels if gnn_out_channels is not None else gnn_hidden_channels,
+                output_dim=cnn_output_dim,
+                hidden_dim=cnn_hidden_dim,
+                output_size=cnn_output_size,
+            )
+        else:
+            decoder = None
+
+        super().__init__(
+            encoder=encoder,
+            decoder=decoder,
+            triplet_loss_distance_function=triplet_loss_distance_function,
+            triplet_loss_margin=triplet_loss_margin,
+            triplet_loss_swap=triplet_loss_swap,
+            reconstruction_loss_weight=reconstruction_loss_weight,
+            lr=lr
+        )
+        self.save_hyperparameters(
+            "label_embedding_dim", 
+            "bbox_embedding_layer_dims", 
+            "gnn_hidden_channels", 
+            "gnn_num_layers",
+            "gnn_model_cls",
+            "use_edge_attr",
+            "edge_label_embedding_dim",
+            "readout",
+            "cnn_hidden_dim",
+        )
