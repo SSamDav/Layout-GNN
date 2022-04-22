@@ -22,6 +22,8 @@ data/*
 !data/textButton_legend.json
 !data/train_split.json
 
+# Aim folder
+.aim/
 
 
 ### JupyterNotebooks ###

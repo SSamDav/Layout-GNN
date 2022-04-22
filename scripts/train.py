@@ -2,6 +2,7 @@ import multiprocessing
 
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
+from aim.pytorch_lightning import AimLogger
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
@@ -17,7 +18,7 @@ from layout_gnn.utils import pyg_triplets_data_collate
 # TODO: Move to a config file
 # Dataset and data loader arguments
 TRIPLETS_FILENAME = "pairs_0_10000.json"
-BATCH_SIZE = 128
+BATCH_SIZE = 1
 IMAGE_SIZE = 64
 NUM_WORKERS = multiprocessing.cpu_count()
 # Encoder (GNN) arguments
@@ -80,6 +81,15 @@ if __name__ == "__main__":
         reconstruction_loss_weight=RECONSTRUCTION_LOSS_WEIGHT,
         lr=LR,
     )
-
-    trainer = Trainer(default_root_dir=DATA_PATH)
-    trainer.fit(model, data_loader, callbacks=[ModelCheckpoint()])
+    aim_logger = AimLogger(
+        experiment='HierarchicalLayoutGNN',
+        train_metric_prefix='train_',
+        test_metric_prefix='test_',
+        val_metric_prefix='val_',
+    )
+    trainer = Trainer(
+        default_root_dir=DATA_PATH,
+        logger=aim_logger,
+        callbacks=[ModelCheckpoint()]
+    )
+    trainer.fit(model, data_loader)
