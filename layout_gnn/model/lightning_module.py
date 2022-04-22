@@ -58,8 +58,9 @@ class EncoderDecoderWithTripletLoss(LightningModule):
 
         triplet_loss = self.triplet_loss(z, zp, zn)
         if self.decoder is not None:
-            reconstruction_loss = self.reconstruction_loss(self.decoder(z), batch["image"])
-            loss = triplet_loss + self.reconstruction_loss_weight * reconstruction_loss
+            y_pred, y_true = self.decoder(z), batch["image"]
+            reconstruction_loss = self.reconstruction_loss_weight * self.reconstruction_loss(y_pred, y_true)
+            loss = triplet_loss + reconstruction_loss
             return loss, triplet_loss, reconstruction_loss
         else:
             return triplet_loss, None, None
