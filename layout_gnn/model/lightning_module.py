@@ -15,7 +15,7 @@ class EncoderDecoderWithTripletLoss(LightningModule):
         triplet_loss_distance_function: Callable[[torch.Tensor, torch.Tensor], torch.Tensor] = None,
         triplet_loss_margin: float = 1.0,
         triplet_loss_swap: bool = False,
-        recunstruction_loss_weight: float = 1.0,
+        reconstruction_loss_weight: float = 1.0,
         lr: float = 0.001,
     ):
         """
@@ -29,7 +29,7 @@ class EncoderDecoderWithTripletLoss(LightningModule):
             triplet_loss_swap (bool, optional): If True, and if the positive example is closer to the negative example
                 than the anchor is, swaps the positive example and the anchor in the loss computation (see "Learning 
                 shallow convolutional feature descriptors with triplet losses" by V. Balntas et al). Defaults to False.
-            recunstruction_loss_weight (float, optional): Weight of the reconstruction loss relative to the triplet 
+            reconstruction_loss_weight (float, optional): Weight of the reconstruction loss relative to the triplet 
                 loss. Defaults to 1.0.
             lr (float, optional): Learning rate. Defaults to 0.001.
         """
@@ -44,7 +44,7 @@ class EncoderDecoderWithTripletLoss(LightningModule):
         )
 
         self.reconstruction_loss = nn.MSELoss() if decoder is not None else None
-        self.reconstruction_loss_weight = recunstruction_loss_weight
+        self.reconstruction_loss_weight = reconstruction_loss_weight
 
         self.lr = lr
 
@@ -58,8 +58,9 @@ class EncoderDecoderWithTripletLoss(LightningModule):
 
         triplet_loss = self.triplet_loss(z, zp, zn)
         if self.decoder is not None:
-            reconstruction_loss = self.reconstruction_loss(self.decoder(z), batch["image"])
-            loss = triplet_loss + self.reconstruction_loss_weight * reconstruction_loss
+            y_pred, y_true = self.decoder(z), batch["image"]
+            reconstruction_loss = self.reconstruction_loss_weight * self.reconstruction_loss(y_pred, y_true)
+            loss = triplet_loss + reconstruction_loss
             return loss, triplet_loss, reconstruction_loss
         else:
             return triplet_loss, None, None
@@ -69,10 +70,10 @@ class EncoderDecoderWithTripletLoss(LightningModule):
         loss, triplet_loss, reconstruction_loss = self._step(batch, batch_idx)
 
         if triplet_loss is not None:
-            self.log("train_triplet_loss", triplet_loss)
+            self.log("train_triplet_loss", triplet_loss, on_epoch=True)
         if reconstruction_loss is not None:
-            self.log("train_reconstruction_loss", reconstruction_loss)
-        self.log("train_loss", loss, prog_bar=True)
+            self.log("train_reconstruction_loss", reconstruction_loss, on_epoch=True)
+        self.log("train_loss", loss, prog_bar=True, on_epoch=True)
 
         return loss
 
