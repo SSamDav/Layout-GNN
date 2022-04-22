@@ -35,7 +35,7 @@ READOUT = lambda x, inputs: global_mean_pool(x, batch=inputs.batch)
 CNN_HIDDEN_DIM = 16
 TRIPLET_LOSS_DISTANCE_FUNCTION = lambda x1, x2: 1 - F.cosine_similarity(x1, x2)
 # Loss/optimizer parameters
-TRIPLET_LOSS_MARGIN = 1.
+TRIPLET_LOSS_MARGIN = .5
 RECONSTRUCTION_LOSS_WEIGHT = 1
 LR = 0.001
 
