@@ -76,7 +76,9 @@ def pyg_triplets_data_collate(batch: List[Dict[str, Any]]) -> Dict[str, Union[Ba
         collated_batch[k] = Batch.from_data_list([sample[k]["graph"] for sample in batch])
 
     if "image" in batch[0]["anchor"]:
-        collated_batch["image"] = torch.stack([torch.as_tensor(sample["anchor"]["image"]) for sample in batch])
+        collated_batch["image"] = torch.stack(
+            [torch.as_tensor(sample["anchor"]["image"], dtype=torch.float) for sample in batch]
+        )
 
     return collated_batch
 
