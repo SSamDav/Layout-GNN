@@ -1,7 +1,7 @@
 import json
 import zipfile
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional, Sequence, Union
 
 import numpy as np
 from google.cloud import storage
@@ -12,6 +12,7 @@ BUCKET_ID = 'crowdstf-rico-uiuc-4540'
 BUCKET_PATH = 'rico_dataset_v0.1/semantic_annotations.zip'
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DATA_PATH = BASE_DIR / 'data'
+
 
 class RICOSemanticAnnotationsDataset(Dataset):
     def __init__(self, root_dir: Optional[Path] = None, transform=None, only_data: bool = False):
@@ -46,13 +47,15 @@ class RICOSemanticAnnotationsDataset(Dataset):
     def __len__(self):
         return len(self.files)
     
-    def __getitem__(self, idx):
-        
+    def _get_item(self, idx: int, only_data: Optional[bool] = None):
+        if only_data is None:
+            only_data = self._only_data
+
         with open(self.files[idx], 'r') as fp:
             json_file = json.load(fp)
             
         sample = {'data': json_file, 'filename': self.files[idx].stem}
-        if not self._only_data:
+        if not only_data:
             image = io.imread(self.files[idx].with_suffix('.png'))[:,: , :3] # Removing the Alpha channel
             sample['image'] = image            
             
@@ -60,3 +63,39 @@ class RICOSemanticAnnotationsDataset(Dataset):
             sample = self.transform(sample)
         
         return sample
+
+    def __getitem__(self, idx):
+        return self._get_item(idx)
+
+
+class RICOTripletsDataset(RICOSemanticAnnotationsDataset):
+    VALID_TRIPLET_METRICS = {"iou", "ged"}
+
+    def __init__(self, triplets: Union[Sequence[Dict[str, str]], str, Path], triplet_metric: str = "ged", **kwargs):
+        if triplet_metric not in self.VALID_TRIPLET_METRICS:
+            raise ValueError(
+                f"Invalid value {triplet_metric} for argument `triplet_metric`. "
+                f"Must be one of {self.VALID_TRIPLET_METRICS}"
+            )
+
+        super().__init__(**kwargs)
+        if isinstance(triplets, (str, Path)):
+            with open(triplets) as f:
+                triplets = json.load(f)
+        self.triplets = triplets
+        self.triplet_metric = triplet_metric
+        self.file_name_to_idx = {k.stem: i for i, k in enumerate(self.files)}
+
+    def __len__(self):
+        return len(self.triplets)
+
+    def __getitem__(self, idx):
+        anchor_idx = self.file_name_to_idx[self.triplets[idx]["anchor"]]
+        pos_idx = self.file_name_to_idx[self.triplets[idx][f"pos_{self.triplet_metric}"]["pair"]]
+        neg_idx = self.file_name_to_idx[self.triplets[idx][f"neg_{self.triplet_metric}"]["pair"]]
+        
+        return {
+            "anchor": self._get_item(anchor_idx),
+            "pos": self._get_item(pos_idx, only_data=True),
+            "neg": self._get_item(neg_idx, only_data=True),
+        }

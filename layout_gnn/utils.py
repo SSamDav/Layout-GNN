@@ -1,10 +1,11 @@
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import numpy.typing as npt
+import torch
 from torch_geometric.data import Batch
 
 
@@ -67,6 +68,17 @@ def pyg_data_collate(batch: List[Dict[str, Any]]) -> Batch:
     """Creates a torch_geometric Batch from a list of samples."""
     return Batch.from_data_list([sample["graph"] for sample in batch])
 
+
+def pyg_triplets_data_collate(batch: List[Dict[str, Any]]) -> Dict[str, Union[Batch, torch.Tensor]]:
+    """Creates a dict with a batch of anchor, positive and negative graphs and the anchor image."""
+    collated_batch = {}
+    for k in ("anchor", "pos", "neg"):
+        collated_batch[k] = Batch.from_data_list([sample[k]["graph"] for sample in batch])
+
+    if "image" in batch[0]["anchor"]:
+        collated_batch["image"] = torch.stack([torch.as_tensor(sample["anchor"]["image"]) for sample in batch])
+
+    return collated_batch
 
 def draw_class_image(image_shape: Tuple[int, int],
                      node_labels: Dict[str, Any],

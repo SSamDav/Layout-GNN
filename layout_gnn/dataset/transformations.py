@@ -1,4 +1,5 @@
 from typing import Any, Dict, Optional
+from matplotlib import image
 
 import networkx as nx
 from skimage import transform
@@ -91,11 +92,15 @@ def add_networkx(sample: Dict[str, Any]) -> Dict[str, Any]:
 class RescaleImage:
     """Recales the image to a specified width and height.
     """    
-    def __init__(self, width: int, height: int):
+    def __init__(self, width: int, height: int, allow_missing_image: bool = False):
         self.w = width
         self.h = height
+        self._allow_missing_image = allow_missing_image
         
     def __call__(self, sample):
+        if self._allow_missing_image and "image" not in sample:
+            return sample
+
         return {
             **sample,
             'image': transform.resize(sample['image'], (self.h, self.w))
