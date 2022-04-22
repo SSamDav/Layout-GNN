@@ -82,7 +82,10 @@ class RICOTripletsDataset(RICOSemanticAnnotationsDataset):
         if isinstance(triplets, (str, Path)):
             with open(triplets) as f:
                 triplets = json.load(f)
-        self.triplets = triplets
+        self.triplets = list(filter(
+            lambda x: "anchor" in x and f"pos_{triplet_metric}" in x and f"neg_{triplet_metric}" in x, 
+            triplets,
+        ))
         self.triplet_metric = triplet_metric
         self.file_name_to_idx = {k.stem: i for i, k in enumerate(self.files)}
 
