@@ -81,5 +81,5 @@ if __name__ == "__main__":
         lr=LR,
     )
 
-    trainer = Trainer(default_root_dir=DATA_PATH)
-    trainer.fit(model, data_loader, callbacks=[ModelCheckpoint()])
+    trainer = Trainer(default_root_dir=DATA_PATH, callbacks=[ModelCheckpoint()])
+    trainer.fit(model, data_loader)
