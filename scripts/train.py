@@ -18,7 +18,7 @@ from layout_gnn.utils import pyg_triplets_data_collate
 # TODO: Move to a config file
 # Dataset and data loader arguments
 TRIPLETS_FILENAME = "pairs_0_10000.json"
-BATCH_SIZE = 1
+BATCH_SIZE = 128
 IMAGE_SIZE = 64
 NUM_WORKERS = multiprocessing.cpu_count()
 # Encoder (GNN) arguments
