@@ -2,6 +2,7 @@ import multiprocessing
 
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
+import torch.cuda as cuda
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
@@ -81,5 +82,9 @@ if __name__ == "__main__":
         lr=LR,
     )
 
-    trainer = Trainer(default_root_dir=DATA_PATH, callbacks=[ModelCheckpoint()])
+    trainer = Trainer(
+        accelerator="gpu" if cuda.is_available() else None,
+        default_root_dir=DATA_PATH,
+        callbacks=[ModelCheckpoint()],
+    )
     trainer.fit(model, data_loader)
