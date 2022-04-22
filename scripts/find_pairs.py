@@ -1,16 +1,20 @@
 import json
+import gzip
 import random
 from pathlib import Path
 
 from multiprocessing.pool import ThreadPool
 from multiprocessing import Pool
+from joblib import Parallel, delayed
 
 from functools import partial
+
+from sklearn import neighbors
 from layout_gnn.dataset.dataset import RICOSemanticAnnotationsDataset
 from layout_gnn.dataset import transformations
 from layout_gnn.similarity_metrics import compute_edit_distance, compute_iou
 from layout_gnn.utils import *
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 from tqdm.auto import tqdm
 
@@ -26,76 +30,131 @@ GED_NEG_THRESH = lambda x: x > 0.66
 GED_POS_THRESH = lambda x: x < 0.35
 
 
-def compute_pairs(dataset, anchor_dataset_idx):
+
+class NeighborsDataset(Dataset):
+    def __init__(self) -> None:
+        super().__init__()
+        
+        self.rico_dataset = RICOSemanticAnnotationsDataset(
+            transform=transforms.Compose([
+                transformations.process_data,
+                transformations.normalize_bboxes,
+                transformations.add_networkx,
+            ]),
+            only_data=True
+        )
+        
+        with gzip.open(DATA_PATH / 'neighbors.gzip', 'rt') as fp:
+            neighbors = json.load(fp)
+            
+        self.filename2idx = {x.stem: i for i, x in enumerate(self.rico_dataset.files)}
+        self.neighbors = [{
+            'anchor':  self.filename2idx[n['anchor']],
+            'closest': [self.filename2idx[j] for j in n['closest'] if j in self.filename2idx],
+            'farthest': [self.filename2idx[j] for j in n['farthest'] if j in self.filename2idx]
+        } for n in neighbors if n['anchor'] in self.filename2idx]
+    
+    def __len__(self):
+        return len(self.neighbors)
+    
+    def __getitem__(self, idx):
+        return compute_pairs(
+            self.rico_dataset[self.neighbors[idx]['anchor']],
+            self.neighbors[idx]['closest'],
+            self.neighbors[idx]['farthest'],
+            self.rico_dataset
+        )
+            
+def compute_pairs(anchor, closest, farthest, dataset):
     datapoint = {
-        'anchor': dataset[anchor_dataset_idx]['filename']
+        'anchor': anchor['filename']
     }
     
-    pair_indexes = sorted([i for i in range(len(dataset)) if i != anchor_dataset_idx], key=lambda k: random.random())
-    for idx in pair_indexes:
-        
-        if 'neg_iou' not in datapoint or 'pos_iou' not in datapoint:
-            iou_metric = compute_iou(dataset[anchor_dataset_idx], dataset[idx])
-            
-            if IOU_NEG_THRESH(iou_metric['iou']) and 'neg_iou' not in datapoint:
-                datapoint['neg_iou'] = {
-                    'pair': dataset[idx]['filename'],
-                    **iou_metric
-                }
-
-            if IOU_POS_THRESH(iou_metric['iou']) and 'pos_iou' not in datapoint:
+    
+    for idx in closest:
+        neighbour = dataset[idx]
+        if 'pos_iou' not in datapoint:
+            iou_metric = compute_iou(anchor, neighbour)
+            if IOU_POS_THRESH(iou_metric['iou']):
                 datapoint['pos_iou'] = {
-                    'pair': dataset[idx]['filename'],
+                    'pair': neighbour['filename'],
                     **iou_metric
                 }
-        if 'neg_ged' not in datapoint or 'pos_ged' not in datapoint:   
-            ged_metric = compute_edit_distance(dataset[anchor_dataset_idx]['graph'].to_undirected(), dataset[idx]['graph'].to_undirected())
-            if GED_NEG_THRESH(ged_metric['normalized_edit_distance']) and 'neg_ged' not in datapoint:
-                datapoint['neg_ged'] = {
-                    'pair': dataset[idx]['filename'],
+        if 'pos_ged' not in datapoint:
+            ged_metric = compute_edit_distance(anchor['graph'].to_undirected(), neighbour['graph'].to_undirected())
+            if GED_POS_THRESH(ged_metric['normalized_edit_distance']):
+                datapoint['pos_ged'] = {
+                    'pair': neighbour['filename'],
                     **ged_metric
                 }
-
-            if GED_NEG_THRESH(ged_metric['normalized_edit_distance']) and 'pos_ged' not in datapoint:
-                datapoint['pos_ged'] = {
-                    'pair': dataset[idx]['filename'],
+                
+        if len(datapoint) == 3:
+            break
+                
+    for idx in farthest:            
+        neighbour = dataset[idx]
+        if 'neg_iou' not in datapoint:
+            iou_metric = compute_iou(anchor, neighbour)
+            if IOU_NEG_THRESH(iou_metric['iou']):
+                datapoint['neg_iou'] = {
+                    'pair': neighbour['filename'],
+                    **iou_metric
+                }
+            
+        if 'neg_ged' not in datapoint:   
+            ged_metric = compute_edit_distance(anchor['graph'].to_undirected(), neighbour['graph'].to_undirected())
+            if GED_NEG_THRESH(ged_metric['normalized_edit_distance']):
+                datapoint['neg_ged'] = {
+                    'pair': neighbour['filename'],
                     **ged_metric
                 }
 
         if len(datapoint) == 5:
-            return datapoint
+            break
         
     return datapoint
 
 if __name__ == '__main__':
 
-    rico_dataset = RICOSemanticAnnotationsDataset(
-        transform=transforms.Compose([
-            transformations.process_data,
-            transformations.normalize_bboxes,
-            transformations.add_networkx,
-        ]),
-        only_data=True
-    )
+    
+    neighbors_data = NeighborsDataset()
 
-    dataloader = DataLoader(rico_dataset, batch_size=1, num_workers=16, collate_fn=default_data_collate)
+    dataloader = DataLoader(neighbors_data, batch_size=1, num_workers=30, collate_fn=default_data_collate)
     dataset = []
     for data in tqdm(dataloader):
         dataset.extend(data)
         
-    with open(DATA_PATH / 'train_split.json', 'r') as fp:
-        train_split = json.load(fp)
+    with open(DATA_PATH / 'pairs.json', 'w') as fp:
+        json.dump(dataset, fp)
         
-    train_datapoints = [f[:-4] for f in train_split['train_uis']]
+    # with open(DATA_PATH / 'train_split.json', 'r') as fp:
+    #     train_split = json.load(fp)
     
-    dataset = list(filter(lambda x: x['filename'] in train_datapoints, dataset))
-    dataset = sorted(dataset, key=lambda x: x['filename'])
+    # with gzip.open(DATA_PATH / 'neighbors.gzip', 'rt') as fp:
+    #     neighbors = json.load(fp)
     
-    dataset_indexes = list(range(len(dataset)))
-    comput_func = partial(compute_pairs, dataset)
-    sub_set = dataset_indexes[:10000]
-    with Pool(30) as p:
-        results = list(tqdm(p.imap(comput_func, sub_set), total=len(sub_set)))
+    # train_datapoints = sorted([f[:-4] for f in train_split['train_uis']])
+    # dataset = list(filter(lambda x: x['filename'] in train_datapoints, dataset))
+    # dataset = sorted(dataset, key=lambda x: x['filename'])
+    # dataset_indexes = list(range(len(dataset)))
+    # filename2idx = {x['filename']: i for i, x in enumerate(dataset)}
+    
+    # neighbors_ids = {
+    #     filename2idx[data['anchor']]: {
+    #         'closest': [filename2idx[name] for name in data['closest']],
+    #         'farthest': [filename2idx[name] for name in data['farthest']]
+    #     }
+    #     for data in tqdm(neighbors)
+    # }
+    
+    # anchors = [{d: neighbors_ids[d]} for d in dataset_indexes if d in neighbors_ids]
+    
+    # output = np.memmap(DATA_PATH / 'pairs.npy', dtype='object', shape=len(anchors), mode='w+')
+    # comput_func = partial(compute_pairs, dataset, output)
+    # results = Parallel(n_jobs=30)(delayed(comput_func)(idx, neigh) for idx, neigh in tqdm(enumerate(anchors), total=len(anchors)))
+    
+    # # with Pool(30) as p:
+    # #     results = list(tqdm(p.imap(comput_func, dataset_indexes), total=len(dataset_indexes)))
          
-    with open(DATA_PATH / 'pairs_0_10000.json', 'w') as fp:
-        json.dump(results, fp)
+    # with open(DATA_PATH / 'pairs.json', 'w') as fp:
+    #     json.dump(results, fp)
