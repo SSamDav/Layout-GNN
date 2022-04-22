@@ -2,6 +2,7 @@ import multiprocessing
 
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
+import torch.cuda as cuda
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
@@ -34,7 +35,7 @@ READOUT = lambda x, inputs: global_mean_pool(x, batch=inputs.batch)
 CNN_HIDDEN_DIM = 16
 TRIPLET_LOSS_DISTANCE_FUNCTION = lambda x1, x2: 1 - F.cosine_similarity(x1, x2)
 # Loss/optimizer parameters
-TRIPLET_LOSS_MARGIN = 1.
+TRIPLET_LOSS_MARGIN = .5
 RECONSTRUCTION_LOSS_WEIGHT = 1
 LR = 0.001
 
@@ -81,5 +82,9 @@ if __name__ == "__main__":
         lr=LR,
     )
 
-    trainer = Trainer(default_root_dir=DATA_PATH)
-    trainer.fit(model, data_loader, callbacks=[ModelCheckpoint()])
+    trainer = Trainer(
+        accelerator="gpu" if cuda.is_available() else None,
+        default_root_dir=DATA_PATH,
+        callbacks=[ModelCheckpoint()],
+    )
+    trainer.fit(model, data_loader)
