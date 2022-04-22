@@ -1,6 +1,7 @@
 import multiprocessing
 
 from pytorch_lightning import Trainer
+from pytorch_lightning.callbacks import ModelCheckpoint
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
@@ -41,7 +42,7 @@ LR = 0.001
 if __name__ == "__main__":
     dataset = RICOTripletsDataset(triplets=DATA_PATH / TRIPLETS_FILENAME)
     label_mappings = {k: i for i, k in enumerate(dataset.label_color_map)}
-    dataset.transform = transform=transforms.Compose([
+    dataset.transform = transforms.Compose([
         transformations.process_data,
         transformations.normalize_bboxes,
         transformations.add_networkx,
@@ -81,4 +82,4 @@ if __name__ == "__main__":
     )
 
     trainer = Trainer(default_root_dir=DATA_PATH)
-    trainer.fit(model, data_loader)
+    trainer.fit(model, data_loader, callbacks=[ModelCheckpoint()])
