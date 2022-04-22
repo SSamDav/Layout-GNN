@@ -124,7 +124,6 @@ class LayoutGraphModelCNNNeuralRasterizer(EncoderDecoderWithTripletLoss):
         cnn_output_dim: Optional[int] = None,
         cnn_hidden_dim: int = 8,
         cnn_output_size: int = None,
-        decoder: nn.Module = None,
         triplet_loss_distance_function: Callable[[torch.Tensor, torch.Tensor], torch.Tensor] = None,
         triplet_loss_margin: float = 1,
         triplet_loss_swap: bool = False,
@@ -132,6 +131,40 @@ class LayoutGraphModelCNNNeuralRasterizer(EncoderDecoderWithTripletLoss):
         lr: float = 0.001,
         **kwargs
     ):
+        """
+        Args:
+            num_labels (int): Number of classes in the node label attribute.
+            label_embedding_dim (int): dimension of the label embeddings.
+            bbox_embedding_layer_dims (Union[Sequence[int], int]): Layer dimensions of the MLP that embeds the
+                bounding box. If a single dimension is provided, the bounding box is embedded with a single linear
+                layer.
+            gnn_hidden_channels (int): Dimension of the hidden node representation in the GNN.
+            gnn_num_layers (int): Number of GNN layers.
+            gnn_out_channels (Optional[int], optional): Dimension of the output node representation of the GNN. If not
+                provided, same as gnn_hidden_channels.
+            gnn_model_cls (Type[BasicGNN], optional): Class of the GNN model, must follow the torch_geometric BasicGNN
+                format. Defaults to GCN.
+            use_edge_attr (bool, optional): If True, the edge label will be embedded and used as edge attribute. 
+                Defaults to False.
+            num_edge_labels (Optional[int], optional): Number of classes in the edge label attribute. Defaults to None.
+            edge_label_embedding_dim (Optional[int], optional): _description_. Defaults to None.
+            readout (Optional[Callable[[torch.Tensor, data.Data], torch.Tensor]]): Callable that receives the tensor of
+                node embeddings and the input graph/batch and returns the graph embeddings. If None, the tensor of node
+                embeddings is returned.
+            cnn_output_dim (Optional[int]): Number of channels of the decoded image. If not provided, the decoder is
+                not used.
+            cnn_hidden_dim (int): Hidden dimension of the decoder CNN.
+            cnn_output_size (Optional[int]): Size of the decoded image. If not provided, the decoder is not used.
+            triplet_loss_distance_function (Callable[[torch.Tensor, torch.Tensor], torch.Tensor], optional): the 
+                distance metric to be used in the triplet loss. If not provided, euclidean distance is used.
+            triplet_loss_margin (float, optional): Margin of the triplet loss. Defaults to 1.0.
+            triplet_loss_swap (bool, optional): If True, and if the positive example is closer to the negative example
+                than the anchor is, swaps the positive example and the anchor in the loss computation (see "Learning 
+                shallow convolutional feature descriptors with triplet losses" by V. Balntas et al). Defaults to False.
+            reconstruction_loss_weight (float, optional): Weight of the reconstruction loss relative to the triplet 
+                loss. Defaults to 1.0.
+            lr (float, optional): Learning rate. Defaults to 0.001.
+        """
         if readout is None:
             # The readout is mandatory in this setup
             readout = lambda x, inputs: global_mean_pool(x, batch=inputs.batch)
@@ -173,10 +206,16 @@ class LayoutGraphModelCNNNeuralRasterizer(EncoderDecoderWithTripletLoss):
             "label_embedding_dim", 
             "bbox_embedding_layer_dims", 
             "gnn_hidden_channels", 
+            "gnn_out_channels",
             "gnn_num_layers",
             "gnn_model_cls",
             "use_edge_attr",
             "edge_label_embedding_dim",
             "readout",
             "cnn_hidden_dim",
+            "triplet_loss_distance_function",
+            "triplet_loss_margin",
+            "triplet_loss_swap",
+            "reconstruction_loss_weight",
+            "lr",
         )
