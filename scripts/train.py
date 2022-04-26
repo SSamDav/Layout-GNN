@@ -9,17 +9,18 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch_geometric.nn import global_mean_pool, GCN
 from torchvision import transforms
+from tqdm import tqdm
 
 from layout_gnn.dataset.dataset import RICOTripletsDataset, DATA_PATH
 from layout_gnn.dataset import transformations
 from layout_gnn.model.lightning_module import LayoutGraphModelCNNNeuralRasterizer
-from layout_gnn.utils import pyg_triplets_data_collate
+from layout_gnn.utils import default_data_collate, pyg_triplets_data_collate
 
 
 # TODO: Move to a config file
 # Dataset and data loader arguments
-TRIPLETS_FILENAME = "pairs_0_10000.json"
-BATCH_SIZE = 128
+TRIPLETS_FILENAME = "pairs.json"
+BATCH_SIZE = 16
 IMAGE_SIZE = 64
 NUM_WORKERS = multiprocessing.cpu_count()
 # Encoder (GNN) arguments
@@ -55,12 +56,14 @@ if __name__ == "__main__":
         ),
         transformations.convert_graph_to_pyg,
     ])
-
+    
     data_loader = DataLoader(
         dataset=dataset, 
         batch_size=BATCH_SIZE, 
         collate_fn=pyg_triplets_data_collate, 
         num_workers=NUM_WORKERS,
+        shuffle=True,
+        persistent_workers=True
     )
     model = LayoutGraphModelCNNNeuralRasterizer(
         num_labels=len(label_mappings) + 1,
@@ -90,9 +93,10 @@ if __name__ == "__main__":
     )
 
     trainer = Trainer(
+        max_epochs=5,
         accelerator="gpu" if cuda.is_available() else None,
         default_root_dir=DATA_PATH,
         logger=aim_logger,
-        callbacks=[ModelCheckpoint()],
+        callbacks=[ModelCheckpoint(dirpath=DATA_PATH / 'model')],
     )
     trainer.fit(model, data_loader)

@@ -46,7 +46,7 @@ class EncoderDecoderWithTripletLoss(LightningModule):
             swap=triplet_loss_swap,
         )
 
-        self.reconstruction_loss = nn.MSELoss() if decoder is not None else None
+        self.reconstruction_loss = nn.MSELoss(reduction='sum') if decoder is not None else None
         self.reconstruction_loss_weight = reconstruction_loss_weight
 
         self.lr = lr
