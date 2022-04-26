@@ -22,6 +22,7 @@ from layout_gnn.utils import default_data_collate, pyg_triplets_data_collate
 TRIPLETS_FILENAME = "pairs.json"
 BATCH_SIZE = 16
 IMAGE_SIZE = 64
+EPOCHS = 100
 NUM_WORKERS = multiprocessing.cpu_count()
 # Encoder (GNN) arguments
 LABEL_EMBEDDING_DIM = 64
@@ -93,7 +94,7 @@ if __name__ == "__main__":
     )
 
     trainer = Trainer(
-        max_epochs=5,
+        max_epochs=EPOCHS,
         accelerator="gpu" if cuda.is_available() else None,
         default_root_dir=DATA_PATH,
         logger=aim_logger,
