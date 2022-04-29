@@ -20,7 +20,7 @@ from layout_gnn.utils import default_data_collate, pyg_triplets_data_collate
 # TODO: Move to a config file
 # Dataset and data loader arguments
 TRIPLETS_FILENAME = "pairs.json"
-BATCH_SIZE = 16
+BATCH_SIZE = 32
 IMAGE_SIZE = 64
 EPOCHS = 100
 NUM_WORKERS = multiprocessing.cpu_count()
@@ -39,7 +39,7 @@ CNN_HIDDEN_DIM = 16
 TRIPLET_LOSS_DISTANCE_FUNCTION = lambda x1, x2: 1 - F.cosine_similarity(x1, x2)
 # Loss/optimizer parameters
 TRIPLET_LOSS_MARGIN = .5
-RECONSTRUCTION_LOSS_WEIGHT = 1
+RECONSTRUCTION_LOSS_WEIGHT = 0.01
 LR = 0.001
 
 

@@ -71,8 +71,8 @@ class EncoderDecoderWithTripletLoss(LightningModule):
             samples = None
             if return_samples:
                 samples = {
-                    'pred': y_pred.transpose(1, -1)[0, :, :, :],
-                    'gold': batch["image"][0, :, :, :],
+                    'pred': y_pred[0, :, :, :].transpose(-2, -1),
+                    'gold': y_true[0, :, :, :].transpose(-2, -1),
                 }
                 
             return loss, triplet_loss, reconstruction_loss, samples
@@ -81,14 +81,22 @@ class EncoderDecoderWithTripletLoss(LightningModule):
 
 
     def training_step(self, batch, batch_idx):
-        loss, triplet_loss, reconstruction_loss, samples = self._step(batch, batch_idx)
+        return_samples = batch_idx % 1000 == 0
+        loss, triplet_loss, reconstruction_loss, samples = self._step(batch, batch_idx, return_samples=return_samples)
 
         if triplet_loss is not None:
             self.log("train_triplet_loss", triplet_loss, on_epoch=True)
         if reconstruction_loss is not None:
             self.log("train_reconstruction_loss", reconstruction_loss, on_epoch=True)
-        self.log("train_loss", loss, prog_bar=True, on_epoch=True)
+            
+        if samples:
+            
+            # If experiment is Aim experiment
+            if type(self.logger.experiment) == Run:
+                self.logger.experiment.track(Image(samples['pred']), name='train_pred_image')
+                self.logger.experiment.track(Image(samples['gold']), name='train_gold_image')    
 
+        self.log("train_loss", loss, prog_bar=True, on_epoch=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -101,8 +109,8 @@ class EncoderDecoderWithTripletLoss(LightningModule):
         if samples:
             # If experiment is Aim experiment
             if type(self.logger.experiment) == Run:
-                self.logger.experiment.track(Image(samples['pred']), name='Pred Image')
-                self.logger.experiment.track(Image(samples['gold']), name='Gold Image')
+                self.logger.experiment.track(Image(samples['pred']), name='val_pred_image')
+                self.logger.experiment.track(Image(samples['gold']), name='val_gold_image')
                 
         self.log("val_loss", loss, prog_bar=True)
 
