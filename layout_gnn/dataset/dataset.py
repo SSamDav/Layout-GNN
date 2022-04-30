@@ -156,9 +156,12 @@ class ENRICOSemanticAnnotationsDataset(Dataset):
             shutil.rmtree(extracted_folder)
 
         
-        self.files = list(f for f in sorted((enrico_folder).glob('*.json')))
         self.labels = pd.read_csv(self.data_path / 'design_topics.csv', dtype={'screen_id': str, 'topic': str})
         self.labels = self.labels.set_index('screen_id').to_dict()['topic']
+        issues = pd.read_csv(self.data_path / 'enrico_issues.csv', dtype=str)
+        issue_files = issues[issues['source'].isin(['wireframe', 'hierarchy'])]['screen_id'].to_list()
+        
+        self.files = list(f for f in sorted((enrico_folder).glob('*.json')) if f.stem not in issue_files)
         self.label_color_map = json.load(open(self.data_path / 'component_legend.json', 'r'))
         self.icon_label_color_map = json.load(open(self.data_path / 'icon_legend.json', 'r'))
         self.text_button_color_map = json.load(open(self.data_path / 'textButton_legend.json', 'r'))
