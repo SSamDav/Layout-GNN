@@ -126,35 +126,3 @@ if __name__ == '__main__':
         
     with open(DATA_PATH / 'pairs.json', 'w') as fp:
         json.dump(dataset, fp)
-        
-    # with open(DATA_PATH / 'train_split.json', 'r') as fp:
-    #     train_split = json.load(fp)
-    
-    # with gzip.open(DATA_PATH / 'neighbors.gzip', 'rt') as fp:
-    #     neighbors = json.load(fp)
-    
-    # train_datapoints = sorted([f[:-4] for f in train_split['train_uis']])
-    # dataset = list(filter(lambda x: x['filename'] in train_datapoints, dataset))
-    # dataset = sorted(dataset, key=lambda x: x['filename'])
-    # dataset_indexes = list(range(len(dataset)))
-    # filename2idx = {x['filename']: i for i, x in enumerate(dataset)}
-    
-    # neighbors_ids = {
-    #     filename2idx[data['anchor']]: {
-    #         'closest': [filename2idx[name] for name in data['closest']],
-    #         'farthest': [filename2idx[name] for name in data['farthest']]
-    #     }
-    #     for data in tqdm(neighbors)
-    # }
-    
-    # anchors = [{d: neighbors_ids[d]} for d in dataset_indexes if d in neighbors_ids]
-    
-    # output = np.memmap(DATA_PATH / 'pairs.npy', dtype='object', shape=len(anchors), mode='w+')
-    # comput_func = partial(compute_pairs, dataset, output)
-    # results = Parallel(n_jobs=30)(delayed(comput_func)(idx, neigh) for idx, neigh in tqdm(enumerate(anchors), total=len(anchors)))
-    
-    # # with Pool(30) as p:
-    # #     results = list(tqdm(p.imap(comput_func, dataset_indexes), total=len(dataset_indexes)))
-         
-    # with open(DATA_PATH / 'pairs.json', 'w') as fp:
-    #     json.dump(results, fp)
