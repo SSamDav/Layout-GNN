@@ -122,39 +122,37 @@ class ENRICOSemanticAnnotationsDataset(Dataset):
         enrico_folder.mkdir(exist_ok=True)
         
         # Download JSON Files
-        zip_filename = self.data_path / HIERARCHIES_FILE
+        zip_filename = enrico_folder / HIERARCHIES_FILE
         if not zip_filename.exists():
             req = requests.get(HIERARCHIES_URL)
             with open(zip_filename, 'wb') as output_file:
                 output_file.write(req.content)
         
-        extracted_folder = self.data_path / 'hierarchies'
-        if not extracted_folder.exists():
             with zipfile.ZipFile(zip_filename, 'r') as zip_ref:
-                zip_ref.extractall(self.data_path)
+                zip_ref.extractall(enrico_folder)
                 
-            for file in (extracted_folder).glob('*.json'):
+            for file in (enrico_folder / 'hierarchies').glob('*.json'):
                 file.rename(enrico_folder / file.name)
                 
-            shutil.rmtree(extracted_folder)
+            shutil.rmtree(enrico_folder / 'hierarchies')
+            
+                
 
         # Download PNG Files
-        zip_filename = self.data_path / SEMANTIC_IMAGES_FILE
+        zip_filename = enrico_folder / SEMANTIC_IMAGES_FILE
         if not zip_filename.exists():
             req = requests.get(SEMANTIC_IMAGES_URL)
             with open(zip_filename, 'wb') as output_file:
                 output_file.write(req.content)
         
-        extracted_folder = self.data_path / 'wireframes'
-        if not extracted_folder.exists():
             with zipfile.ZipFile(zip_filename, 'r') as zip_ref:
-                zip_ref.extractall(self.data_path)
-                
-            for file in (extracted_folder).glob('*.png'):
+                zip_ref.extractall(enrico_folder)
+
+            for file in (enrico_folder / 'wireframes').glob('*.png'):
                 file.rename(enrico_folder / file.name)
                 
-            shutil.rmtree(extracted_folder)
-
+            shutil.rmtree(enrico_folder / 'wireframes')
+            
         
         self.labels = pd.read_csv(self.data_path / 'design_topics.csv', dtype={'screen_id': str, 'topic': str})
         self.labels = self.labels.set_index('screen_id').to_dict()['topic']
