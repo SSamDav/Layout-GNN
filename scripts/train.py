@@ -4,17 +4,15 @@ from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 from aim.pytorch_lightning import AimLogger
 import torch.cuda as cuda
-import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch_geometric.nn import global_mean_pool, GCN
 from torchvision import transforms
-from tqdm import tqdm
 
 from layout_gnn.dataset.dataset import RICOTripletsDataset, DATA_PATH
 from layout_gnn.dataset import transformations
 from layout_gnn.lightning_module.enc_dec import LayoutGraphModelCNNNeuralRasterizer
-from layout_gnn.utils import default_data_collate, pyg_triplets_data_collate
+from layout_gnn.utils import pyg_triplets_data_collate
 
 
 # TODO: Move to a config file
@@ -33,7 +31,7 @@ GNN_NUM_LAYERS = 4
 GNN_MODEL_CLS = GCN
 USE_EDGE_ATTR = False
 EDGE_LABEL_EMBEDDING_DIM = 16
-READOUT = lambda x, inputs: global_mean_pool(x, batch=inputs.batch)
+READOUT = global_mean_pool
 # Decoder (CNN) arguments
 CNN_HIDDEN_DIM = 16
 TRIPLET_LOSS_DISTANCE_FUNCTION = lambda x1, x2: 1 - F.cosine_similarity(x1, x2)

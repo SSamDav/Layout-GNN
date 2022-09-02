@@ -93,6 +93,6 @@ class LayoutGraphModel(nn.Module):
             x = self.gnn(x=x, edge_index=inputs.edge_index, edge_attr=edge_attr)
 
         if self.readout is not None:
-            x = self.readout(x, inputs)
+            x = self.readout(x, inputs.batch)
 
         return x
