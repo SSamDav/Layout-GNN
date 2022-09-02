@@ -105,9 +105,9 @@ def compute_edit_distance(G1, G2) -> Dict[str, float]:
         node_ins_cost=node_ins_cost,
         edge_subst_cost=edge_subst_cost,
         edge_del_cost=edge_del_cost,
-        edge_ins_cost=edge_ins_cost
+        edge_ins_cost=edge_ins_cost,
     )
-    
+        
     normalized_cost = cost / (G1.number_of_nodes() + G2.number_of_nodes())
     
     return {'edit_distance': cost, 'normalized_edit_distance': normalized_cost}
