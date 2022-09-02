@@ -37,9 +37,27 @@ class SimGRACE(LightningModule):
         self.loss_fn = loss_fn if loss_fn is not None else NTXentLoss()
         self.learning_rate = learning_rate
 
-    def uptade_perturbed_encoder(self) -> None:
-        for src, tgt in zip(self.encoder.parameters(), self.perturbed_encoder.parameters()):
-            tgt.data = src.data + self.perturbation_magnitude * get_perturbation(src.data)
+    def training_step(self, batch: Any, batch_idx: int):
+        return self.forward_loss(batch, log_preffix="train")
+
+    def validation_step(self, batch: Any, batch_idx: int):
+        return self.forward_loss(batch, log_preffix="val")
+
+    def test_step(self, batch: Any, batch_idx: int):
+        return self.forward_loss(batch, log_preffix="test")
+
+    def forward_loss(
+        self,
+        inputs: Any,
+        update_perturbed_encoder: bool = True,
+        log_preffix: Optional[str] = None,
+        **kwargs
+    ) -> torch.Tensor:
+        z, z_ = self(inputs, update_perturbed_encoder=update_perturbed_encoder)
+        loss = self.loss_fn(z, z_)
+        if log_preffix is not None:
+            self.log(f"{log_preffix}_loss", loss, **kwargs)
+        return loss
 
     def forward(self, inputs: Any, update_perturbed_encoder: bool = True) -> Tuple[torch.Tensor, torch.Tensor]:
         if update_perturbed_encoder:
@@ -55,27 +73,12 @@ class SimGRACE(LightningModule):
         
         return z, z_
 
-    def forward_loss(
-        self,
-        inputs: Any,
-        update_perturbed_encoder: bool = True,
-        log_preffix: Optional[str] = None,
-        **kwargs
-    ) -> torch.Tensor:
-        z, z_ = self(inputs, update_perturbed_encoder=update_perturbed_encoder)
-        loss = self.loss_fn(z, z_)
-        if log_preffix is not None:
-            self.log(f"{log_preffix}_loss", loss, **kwargs)
-        return loss
-
-    def training_step(self, batch: Any, batch_idx: int):
-        return self.forward_loss(batch, log_preffix="train")
-
-    def validation_step(self, batch: Any, batch_idx: int):
-        return self.forward_loss(batch, log_preffix="val")
-
-    def test_step(self, batch: Any, batch_idx: int):
-        return self.forward_loss(batch, log_preffix="test")
+    def uptade_perturbed_encoder(self) -> None:
+        for src, tgt in zip(self.encoder.parameters(), self.perturbed_encoder.parameters()):
+            tgt.data = src.data + self.perturbation_magnitude * get_perturbation(src.data)
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=self.learning_rate)
+
+
+    
