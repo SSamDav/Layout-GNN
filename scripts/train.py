@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 from layout_gnn.dataset.dataset import RICOTripletsDataset, DATA_PATH
 from layout_gnn.dataset import transformations
-from layout_gnn.model.lightning_module import LayoutGraphModelCNNNeuralRasterizer
+from layout_gnn.lightning_module.lightning_module import LayoutGraphModelCNNNeuralRasterizer
 from layout_gnn.utils import default_data_collate, pyg_triplets_data_collate
 
 
