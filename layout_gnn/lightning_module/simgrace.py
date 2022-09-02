@@ -29,7 +29,7 @@ class SimGRACE(LightningModule):
         projection_head: nn.Module,
         perturbation_magnitude: float = 1.,
         loss_fn: Optional[nn.Module] = None,
-        learning_rate: float = 0.01,
+        lr: float = 0.01,
     ) -> None:
         super().__init__()
 
@@ -39,16 +39,16 @@ class SimGRACE(LightningModule):
         self.perturbation_magnitude = perturbation_magnitude
 
         self.loss_fn = loss_fn if loss_fn is not None else NTXentLoss()
-        self.learning_rate = learning_rate
+        self.learning_rate = lr
 
     def training_step(self, batch: Any, batch_idx: int):
-        return self.forward_loss(batch, log_preffix="train")
+        return self.forward_loss(batch, log_preffix="train", on_epoch=True)
 
     def validation_step(self, batch: Any, batch_idx: int):
-        return self.forward_loss(batch, log_preffix="val")
+        return self.forward_loss(batch, log_preffix="val", on_epoch=True)
 
     def test_step(self, batch: Any, batch_idx: int):
-        return self.forward_loss(batch, log_preffix="test")
+        return self.forward_loss(batch, log_preffix="test", on_epoch=True)
 
     def forward_loss(
         self,
@@ -59,8 +59,21 @@ class SimGRACE(LightningModule):
     ) -> torch.Tensor:
         z, z_ = self(inputs, update_perturbed_encoder=update_perturbed_encoder)
         loss = self.loss_fn(z, z_)
-        if log_preffix is not None:
-            self.log(f"{log_preffix}_loss", loss, **kwargs)
+        
+        if not isinstance(loss, dict):
+            if log_preffix is not None:
+                self.log(f"{log_preffix}_loss", loss, **kwargs)
+        else:
+            total_loss = 0
+            for k, v in loss.items():
+                if log_preffix is not None:
+                    self.log(f"{log_preffix}_{k}", v, **kwargs)
+                total_loss += v
+            
+            if log_preffix is not None:   
+                self.log(f"{log_preffix}_loss", total_loss, **kwargs)
+            loss = total_loss
+                
         return loss
 
     def forward(self, inputs: Any, update_perturbed_encoder: bool = True) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -230,6 +243,7 @@ class LayoutGNNSimGRACEVICReg(LayoutGNNSimGRACE):
         projection_head_dims: Optional[Union[int, Sequence[int]]] = None,
         perturbation_magnitude: float = 1,
         lr: float = 0.01,
+        weight_decay: float = 1e-6,
         # VICRegLoss parameters
         invariance_weight: float = 25.,
         variance_weight: float = 25.,
@@ -262,4 +276,8 @@ class LayoutGNNSimGRACEVICReg(LayoutGNNSimGRACE):
             lr=lr,
             **kwargs
         )
+        self.weight_decay = weight_decay
         self.save_hyperparameters()
+        
+    def configure_optimizers(self):
+        return torch.optim.SGD(self.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)

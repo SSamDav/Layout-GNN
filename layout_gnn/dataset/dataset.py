@@ -78,17 +78,25 @@ class RICOSemanticAnnotationsDataset(Dataset):
 class RICOTripletsDataset(RICOSemanticAnnotationsDataset):
     VALID_TRIPLET_METRICS = {"iou", "ged"}
 
-    def __init__(self, triplets: Union[Sequence[Dict[str, str]], str, Path], triplet_metric: str = "ged", **kwargs):
+    def __init__(
+        self, 
+        root_dir: Union[str, Path], 
+        triplets: Union[Sequence[Dict[str, str]], str, Path], 
+        triplet_metric: str = "ged", **kwargs
+    ):
         if triplet_metric not in self.VALID_TRIPLET_METRICS:
             raise ValueError(
                 f"Invalid value {triplet_metric} for argument `triplet_metric`. "
                 f"Must be one of {self.VALID_TRIPLET_METRICS}"
             )
 
-        super().__init__(**kwargs)
+        super().__init__(root_dir=root_dir, **kwargs)
+
         if isinstance(triplets, (str, Path)):
-            with open(triplets) as f:
+            path = root_dir / triplets
+            with open(path) as f:
                 triplets = json.load(f)
+                
         self.triplets = list(filter(
             lambda x: "anchor" in x and f"pos_{triplet_metric}" in x and f"neg_{triplet_metric}" in x, 
             triplets,
