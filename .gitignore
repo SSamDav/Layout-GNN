@@ -21,7 +21,8 @@ data/*
 !data/icon_legend.json
 !data/textButton_legend.json
 !data/train_split.json
-
+!data/design_topics.csv
+!data/enrico_issues.csv
 
 
 ### JupyterNotebooks ###

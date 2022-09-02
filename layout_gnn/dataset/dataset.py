@@ -1,5 +1,8 @@
 import json
 import zipfile
+import requests
+import shutil
+import pandas as pd
 from pathlib import Path
 from typing import Dict, Optional, Sequence, Union
 
@@ -12,7 +15,11 @@ BUCKET_ID = 'crowdstf-rico-uiuc-4540'
 BUCKET_PATH = 'rico_dataset_v0.1/semantic_annotations.zip'
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DATA_PATH = BASE_DIR / 'data'
+HIERARCHIES_FILE = 'hierarchies.zip'
+HIERARCHIES_URL =  'http://userinterfaces.aalto.fi/enrico/resources/hierarchies.zip'
 
+SEMANTIC_IMAGES_URL = 'http://userinterfaces.aalto.fi/enrico/resources/wireframes.zip'
+SEMANTIC_IMAGES_FILE = 'wireframes.zip'
 
 class RICOSemanticAnnotationsDataset(Dataset):
     def __init__(self, root_dir: Optional[Path] = None, transform=None, only_data: bool = False):
@@ -102,3 +109,86 @@ class RICOTripletsDataset(RICOSemanticAnnotationsDataset):
             "pos": self._get_item(pos_idx, only_data=True),
             "neg": self._get_item(neg_idx, only_data=True),
         }
+        
+
+class ENRICOSemanticAnnotationsDataset(Dataset):
+    def __init__(self, root_dir: Optional[Path] = None, transform=None, only_data: bool = False):
+        self.data_path = root_dir or DATA_PATH
+        self.transform = transform
+        self._only_data = only_data
+        self.data_path.mkdir(parents=True, exist_ok=True)
+        
+        enrico_folder = self.data_path / 'enrico_semantic_annotations'
+        enrico_folder.mkdir(exist_ok=True)
+        
+        # Download JSON Files
+        zip_filename = self.data_path / HIERARCHIES_FILE
+        if not zip_filename.exists():
+            req = requests.get(HIERARCHIES_URL)
+            with open(zip_filename, 'wb') as output_file:
+                output_file.write(req.content)
+        
+        extracted_folder = self.data_path / 'hierarchies'
+        if not extracted_folder.exists():
+            with zipfile.ZipFile(zip_filename, 'r') as zip_ref:
+                zip_ref.extractall(self.data_path)
+                
+            for file in (extracted_folder).glob('*.json'):
+                file.rename(enrico_folder / file.name)
+                
+            shutil.rmtree(extracted_folder)
+
+        # Download PNG Files
+        zip_filename = self.data_path / SEMANTIC_IMAGES_FILE
+        if not zip_filename.exists():
+            req = requests.get(SEMANTIC_IMAGES_URL)
+            with open(zip_filename, 'wb') as output_file:
+                output_file.write(req.content)
+        
+        extracted_folder = self.data_path / 'wireframes'
+        if not extracted_folder.exists():
+            with zipfile.ZipFile(zip_filename, 'r') as zip_ref:
+                zip_ref.extractall(self.data_path)
+                
+            for file in (extracted_folder).glob('*.png'):
+                file.rename(enrico_folder / file.name)
+                
+            shutil.rmtree(extracted_folder)
+
+        
+        self.labels = pd.read_csv(self.data_path / 'design_topics.csv', dtype={'screen_id': str, 'topic': str})
+        self.labels = self.labels.set_index('screen_id').to_dict()['topic']
+        issues = pd.read_csv(self.data_path / 'enrico_issues.csv', dtype=str)
+        issue_files = issues[issues['source'].isin(['wireframe', 'hierarchy'])]['screen_id'].to_list()
+        
+        self.files = list(f for f in sorted((enrico_folder).glob('*.json')) if f.stem not in issue_files)
+        self.label_color_map = json.load(open(self.data_path / 'component_legend.json', 'r'))
+        self.icon_label_color_map = json.load(open(self.data_path / 'icon_legend.json', 'r'))
+        self.text_button_color_map = json.load(open(self.data_path / 'textButton_legend.json', 'r'))
+        
+        self.label_color_map['Icon'] = next(iter(self.icon_label_color_map.values()))
+        self.label_color_map['Text Button'] = next(iter(self.text_button_color_map.values()))
+        
+        
+    def __len__(self):
+        return len(self.files)
+    
+    def _get_item(self, idx: int, only_data: Optional[bool] = None):
+        if only_data is None:
+            only_data = self._only_data
+
+        with open(self.files[idx], 'r') as fp:
+            json_file = json.load(fp)
+            
+        sample = {'data': json_file, 'filename': self.files[idx].stem}
+        if not only_data:
+            image = io.imread(self.files[idx].with_suffix('.png'))[:,: , :3] # Removing the Alpha channel
+            sample['image'] = image            
+            
+        if self.transform:
+            sample = self.transform(sample)
+        
+        return sample
+
+    def __getitem__(self, idx):
+        return self._get_item(idx)
