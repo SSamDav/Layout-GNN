@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 from pytorch_lightning import LightningModule
 
-from os_screens.nn.loss import NTXentLoss
+from layout_gnn.nn.loss import NTXentLoss
 
 
 def get_perturbation(data: torch.Tensor) -> torch.Tensor:
