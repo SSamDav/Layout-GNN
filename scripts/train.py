@@ -2,24 +2,27 @@ import multiprocessing
 
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
+from aim.pytorch_lightning import AimLogger
 import torch.cuda as cuda
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch_geometric.nn import global_mean_pool, GCN
 from torchvision import transforms
+from tqdm import tqdm
 
 from layout_gnn.dataset.dataset import RICOTripletsDataset, DATA_PATH
 from layout_gnn.dataset import transformations
 from layout_gnn.model.lightning_module import LayoutGraphModelCNNNeuralRasterizer
-from layout_gnn.utils import pyg_triplets_data_collate
+from layout_gnn.utils import default_data_collate, pyg_triplets_data_collate
 
 
 # TODO: Move to a config file
 # Dataset and data loader arguments
-TRIPLETS_FILENAME = "pairs_0_10000.json"
-BATCH_SIZE = 128
+TRIPLETS_FILENAME = "pairs.json"
+BATCH_SIZE = 32
 IMAGE_SIZE = 64
+EPOCHS = 100
 NUM_WORKERS = multiprocessing.cpu_count()
 # Encoder (GNN) arguments
 LABEL_EMBEDDING_DIM = 64
@@ -36,7 +39,7 @@ CNN_HIDDEN_DIM = 16
 TRIPLET_LOSS_DISTANCE_FUNCTION = lambda x1, x2: 1 - F.cosine_similarity(x1, x2)
 # Loss/optimizer parameters
 TRIPLET_LOSS_MARGIN = .5
-RECONSTRUCTION_LOSS_WEIGHT = 1
+RECONSTRUCTION_LOSS_WEIGHT = 0.01
 LR = 0.001
 
 
@@ -54,12 +57,14 @@ if __name__ == "__main__":
         ),
         transformations.convert_graph_to_pyg,
     ])
-
+    
     data_loader = DataLoader(
         dataset=dataset, 
         batch_size=BATCH_SIZE, 
         collate_fn=pyg_triplets_data_collate, 
         num_workers=NUM_WORKERS,
+        shuffle=True,
+        persistent_workers=True
     )
     model = LayoutGraphModelCNNNeuralRasterizer(
         num_labels=len(label_mappings) + 1,
@@ -81,10 +86,18 @@ if __name__ == "__main__":
         reconstruction_loss_weight=RECONSTRUCTION_LOSS_WEIGHT,
         lr=LR,
     )
+    aim_logger = AimLogger(
+        experiment='HierarchicalLayoutGNN',
+        train_metric_prefix='train_',
+        test_metric_prefix='test_',
+        val_metric_prefix='val_',
+    )
 
     trainer = Trainer(
+        max_epochs=EPOCHS,
         accelerator="gpu" if cuda.is_available() else None,
         default_root_dir=DATA_PATH,
-        callbacks=[ModelCheckpoint()],
+        logger=aim_logger,
+        callbacks=[ModelCheckpoint(dirpath=DATA_PATH / 'model')],
     )
     trainer.fit(model, data_loader)

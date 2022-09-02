@@ -24,6 +24,9 @@ data/*
 !data/design_topics.csv
 !data/enrico_issues.csv
 
+# Aim folder
+.aim/
+
 
 ### JupyterNotebooks ###
 # gitignore template for Jupyter Notebooks

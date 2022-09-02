@@ -3,11 +3,12 @@ from typing import Callable, Optional, Sequence, Type, Union
 
 import torch
 import torch.nn as nn
+from aim import Run, Image
+from layout_gnn.model.model import CNNNeuralRasterizer, LayoutGraphModel
 from pytorch_lightning import LightningModule
 from torch_geometric.data import Data
 from torch_geometric.nn import GCN, global_mean_pool
 
-from layout_gnn.model.model import LayoutGraphModel, CNNNeuralRasterizer
 
 class EncoderDecoderWithTripletLoss(LightningModule):
     """LightningModule to train the graph layout encoder with a combination of triplet and reconstruction loss."""
@@ -46,7 +47,7 @@ class EncoderDecoderWithTripletLoss(LightningModule):
             swap=triplet_loss_swap,
         )
 
-        self.reconstruction_loss = nn.MSELoss() if decoder is not None else None
+        self.reconstruction_loss = nn.MSELoss(reduction='sum') if decoder is not None else None
         self.reconstruction_loss_weight = reconstruction_loss_weight
 
         self.lr = lr
@@ -54,7 +55,7 @@ class EncoderDecoderWithTripletLoss(LightningModule):
     def forward(self, x):
         return self.encoder(x)
 
-    def _step(self, batch, batch_idx):
+    def _step(self, batch, batch_idx, return_samples: bool = False):
         x, xp, xn = batch["anchor"], batch["pos"], batch["neg"]
         
         z, zp, zn = self(x), self(xp), self(xn)
@@ -67,33 +68,54 @@ class EncoderDecoderWithTripletLoss(LightningModule):
             y_true = batch["image"].transpose(1, -1)
             reconstruction_loss = self.reconstruction_loss_weight * self.reconstruction_loss(y_pred, y_true)
             loss = triplet_loss + reconstruction_loss
-            return loss, triplet_loss, reconstruction_loss
+            samples = None
+            if return_samples:
+                samples = {
+                    'pred': y_pred[0, :, :, :].transpose(-2, -1),
+                    'gold': y_true[0, :, :, :].transpose(-2, -1),
+                }
+                
+            return loss, triplet_loss, reconstruction_loss, samples
         else:
-            return triplet_loss, None, None
+            return triplet_loss, None, None, None
 
 
     def training_step(self, batch, batch_idx):
-        loss, triplet_loss, reconstruction_loss = self._step(batch, batch_idx)
+        return_samples = batch_idx % 1000 == 0
+        loss, triplet_loss, reconstruction_loss, samples = self._step(batch, batch_idx, return_samples=return_samples)
 
         if triplet_loss is not None:
             self.log("train_triplet_loss", triplet_loss, on_epoch=True)
         if reconstruction_loss is not None:
             self.log("train_reconstruction_loss", reconstruction_loss, on_epoch=True)
-        self.log("train_loss", loss, prog_bar=True, on_epoch=True)
+            
+        if samples:
+            
+            # If experiment is Aim experiment
+            if type(self.logger.experiment) == Run:
+                self.logger.experiment.track(Image(samples['pred']), name='train_pred_image')
+                self.logger.experiment.track(Image(samples['gold']), name='train_gold_image')    
 
+        self.log("train_loss", loss, prog_bar=True, on_epoch=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        loss, triplet_loss, reconstruction_loss = self._step(batch, batch_idx)
+        loss, triplet_loss, reconstruction_loss, samples = self._step(batch, batch_idx, return_samples=True)
 
         if triplet_loss is not None:
             self.log("val_triplet_loss", triplet_loss)
         if reconstruction_loss is not None:
             self.log("val_reconstruction_loss", reconstruction_loss)
+        if samples:
+            # If experiment is Aim experiment
+            if type(self.logger.experiment) == Run:
+                self.logger.experiment.track(Image(samples['pred']), name='val_pred_image')
+                self.logger.experiment.track(Image(samples['gold']), name='val_gold_image')
+                
         self.log("val_loss", loss, prog_bar=True)
 
     def test_step(self, batch, batch_idx):
-        loss, triplet_loss, reconstruction_loss = self._step(batch, batch_idx)
+        loss, triplet_loss, reconstruction_loss, samples = self._step(batch, batch_idx)
 
         if triplet_loss is not None:
             self.log("test_triplet_loss", triplet_loss)
@@ -202,20 +224,22 @@ class LayoutGraphModelCNNNeuralRasterizer(EncoderDecoderWithTripletLoss):
             reconstruction_loss_weight=reconstruction_loss_weight,
             lr=lr
         )
-        self.save_hyperparameters(
-            "label_embedding_dim", 
-            "bbox_embedding_layer_dims", 
-            "gnn_hidden_channels", 
-            "gnn_out_channels",
-            "gnn_num_layers",
-            "gnn_model_cls",
-            "use_edge_attr",
-            "edge_label_embedding_dim",
-            "readout",
-            "cnn_hidden_dim",
-            "triplet_loss_distance_function",
-            "triplet_loss_margin",
-            "triplet_loss_swap",
-            "reconstruction_loss_weight",
-            "lr",
-        )
+        
+        # TODO: Commenting because currently Aim has a bug with the parameters logging
+        # self.save_hyperparameters(
+        #     "label_embedding_dim", 
+        #     "bbox_embedding_layer_dims", 
+        #     "gnn_hidden_channels", 
+        #     "gnn_out_channels",
+        #     "gnn_num_layers",
+        #     "gnn_model_cls",
+        #     "use_edge_attr",
+        #     "edge_label_embedding_dim",
+        #     "readout",
+        #     "cnn_hidden_dim",
+        #     "triplet_loss_distance_function",
+        #     "triplet_loss_margin",
+        #     "triplet_loss_swap",
+        #     "reconstruction_loss_weight",
+        #     "lr",
+        # )
