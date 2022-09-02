@@ -4,7 +4,8 @@ from typing import Callable, Optional, Sequence, Type, Union
 import torch
 import torch.nn as nn
 from aim import Run, Image
-from layout_gnn.nn.model import CNNNeuralRasterizer, LayoutGraphModel
+from layout_gnn.nn.model import LayoutGraphModel
+from layout_gnn.nn.neural_rasterizer import CNNNeuralRasterizer
 from pytorch_lightning import LightningModule
 from torch_geometric.data import Data
 from torch_geometric.nn import GCN, global_mean_pool
