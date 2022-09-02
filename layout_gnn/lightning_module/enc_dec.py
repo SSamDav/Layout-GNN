@@ -225,21 +225,4 @@ class LayoutGraphModelCNNNeuralRasterizer(EncoderDecoderWithTripletLoss):
             lr=lr
         )
         
-        # TODO: Commenting because currently Aim has a bug with the parameters logging
-        # self.save_hyperparameters(
-        #     "label_embedding_dim", 
-        #     "bbox_embedding_layer_dims", 
-        #     "gnn_hidden_channels", 
-        #     "gnn_out_channels",
-        #     "gnn_num_layers",
-        #     "gnn_model_cls",
-        #     "use_edge_attr",
-        #     "edge_label_embedding_dim",
-        #     "readout",
-        #     "cnn_hidden_dim",
-        #     "triplet_loss_distance_function",
-        #     "triplet_loss_margin",
-        #     "triplet_loss_swap",
-        #     "reconstruction_loss_weight",
-        #     "lr",
-        # )
+        self.save_hyperparameters()
