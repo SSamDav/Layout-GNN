@@ -10,6 +10,9 @@ import numpy as np
 from google.cloud import storage
 from skimage import io
 from torch.utils.data import Dataset
+from tqdm.auto import tqdm
+from joblib import Parallel, delayed, parallel_backend
+
 
 BUCKET_ID = 'crowdstf-rico-uiuc-4540'
 BUCKET_PATH = 'rico_dataset_v0.1/semantic_annotations.zip'
@@ -49,12 +52,30 @@ class RICOSemanticAnnotationsDataset(Dataset):
         
         self.label_color_map['Icon'] = next(iter(self.icon_label_color_map.values()))
         self.label_color_map['Text Button'] = next(iter(self.text_button_color_map.values()))
-        
-        
-    def __len__(self):
-        return len(self.files)
+        self.data = []
     
+    def prepare(self):
+        with parallel_backend('threading', n_jobs=-1):
+            self.data = Parallel()(delayed(self.load_sample)(file) for file in tqdm(self.files))
+            
+    def load_sample(self, file):
+        with open(file, 'r') as fp:
+            json_file = json.load(fp)
+            
+        sample = {'data': json_file, 'filename': file.stem}
+        if not self._only_data:
+            image = io.imread(file.with_suffix('.png'))[:,: , :3] # Removing the Alpha channel
+            sample['image'] = image 
+            
+        if self.transform:
+            sample = self.transform(sample)
+        
+        return sample
+            
     def _get_item(self, idx: int, only_data: Optional[bool] = None):
+        if self.data:
+            return self.data[idx]
+        
         if only_data is None:
             only_data = self._only_data
 
@@ -64,12 +85,15 @@ class RICOSemanticAnnotationsDataset(Dataset):
         sample = {'data': json_file, 'filename': self.files[idx].stem}
         if not only_data:
             image = io.imread(self.files[idx].with_suffix('.png'))[:,: , :3] # Removing the Alpha channel
-            sample['image'] = image            
+            sample['image'] = image 
             
         if self.transform:
-            sample = self.transform(sample)
-        
+            sample = self.transform(sample)   
+
         return sample
+    
+    def __len__(self):
+        return len(self.files)
 
     def __getitem__(self, idx):
         return self._get_item(idx)

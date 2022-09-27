@@ -1,16 +1,18 @@
-model_name: 'triplets_ged'
+model_name: 'triplets_iou'
 seed: 7
 dataset_cls: 'RICOTripletsDataset'
 dataset_config:
   triplets: 'pairs.json'
-  only_data: True
+  only_data: False
+  triplet_metric: 'iou'
   
 dataloader_config:
-  batch_size: 256
+  batch_size: 32
   collate_fn: 'pyg_triplets_data_collate'
 
 trainer_config:
   max_epochs: 128
+  accumulate_grad_batches: 8
 
 model_cls: 'LayoutGraphModelCNNNeuralRasterizer'
 model_config:

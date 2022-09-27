@@ -81,7 +81,7 @@ class EncoderDecoderWithTripletLoss(LightningModule):
 
 
     def training_step(self, batch, batch_idx):
-        return_samples = batch_idx % 1000 == 0
+        return_samples = False
         loss, triplet_loss, reconstruction_loss, samples = self._step(batch, batch_idx, return_samples=return_samples)
 
         if triplet_loss is not None:
@@ -100,7 +100,7 @@ class EncoderDecoderWithTripletLoss(LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        loss, triplet_loss, reconstruction_loss, samples = self._step(batch, batch_idx, return_samples=True)
+        loss, triplet_loss, reconstruction_loss, samples = self._step(batch, batch_idx, return_samples=False)
 
         if triplet_loss is not None:
             self.log("val_triplet_loss", triplet_loss)

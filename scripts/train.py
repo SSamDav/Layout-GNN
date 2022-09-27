@@ -82,7 +82,6 @@ if __name__ == "__main__":
     )
 
     trainer = Trainer(
-        max_epochs=config['epochs'],
         accelerator="gpu" if cuda.is_available() else None,
         default_root_dir=dataset_module.DATA_PATH,
         logger=aim_logger,
@@ -92,5 +91,6 @@ if __name__ == "__main__":
                 dirpath=dataset_module.DATA_PATH / config['model_name'],
             )
         ],
+        **config.get('trainer_config', {}),
     )
     trainer.fit(model, data_loader)

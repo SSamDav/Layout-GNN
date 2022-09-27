@@ -1,9 +1,10 @@
-model_name: 'triplets_ged'
+model_name: 'triplets_iou'
 seed: 7
 dataset_cls: 'RICOTripletsDataset'
 dataset_config:
   triplets: 'pairs.json'
   only_data: True
+  triplet_metric: 'iou'
   
 dataloader_config:
   batch_size: 256

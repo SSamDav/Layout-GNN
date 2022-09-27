@@ -1,16 +1,17 @@
-model_name: 'triplets_ged'
+model_name: 'triplets_ged_rasterizer'
 seed: 7
 dataset_cls: 'RICOTripletsDataset'
 dataset_config:
   triplets: 'pairs.json'
-  only_data: True
+  only_data: False
   
 dataloader_config:
-  batch_size: 256
+  batch_size: 8
   collate_fn: 'pyg_triplets_data_collate'
 
 trainer_config:
   max_epochs: 128
+  accumulate_grad_batches: 32
 
 model_cls: 'LayoutGraphModelCNNNeuralRasterizer'
 model_config:
@@ -27,6 +28,9 @@ model_config:
   edge_label_embedding_dim: 16
   readout: 'global_mean_pool'
   # Decoder (CNN) arguments
+  cnn_output_dim: 3
+  cnn_hidden_dim: 16
+  cnn_output_size: 64
   triplet_loss_margin: .5
   triplet_loss_distance_function: True
   reconstruction_loss_weight: 0.01
