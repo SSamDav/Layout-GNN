@@ -1,4 +1,3 @@
-from re import S
 from typing import Callable, Optional, Sequence, Type, Union
 
 import torch
@@ -82,7 +81,7 @@ class EncoderDecoderWithTripletLoss(LightningModule):
 
 
     def training_step(self, batch, batch_idx):
-        return_samples = batch_idx % 1000 == 0
+        return_samples = False
         loss, triplet_loss, reconstruction_loss, samples = self._step(batch, batch_idx, return_samples=return_samples)
 
         if triplet_loss is not None:
@@ -101,7 +100,7 @@ class EncoderDecoderWithTripletLoss(LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        loss, triplet_loss, reconstruction_loss, samples = self._step(batch, batch_idx, return_samples=True)
+        loss, triplet_loss, reconstruction_loss, samples = self._step(batch, batch_idx, return_samples=False)
 
         if triplet_loss is not None:
             self.log("val_triplet_loss", triplet_loss)
@@ -226,21 +225,4 @@ class LayoutGraphModelCNNNeuralRasterizer(EncoderDecoderWithTripletLoss):
             lr=lr
         )
         
-        # TODO: Commenting because currently Aim has a bug with the parameters logging
-        # self.save_hyperparameters(
-        #     "label_embedding_dim", 
-        #     "bbox_embedding_layer_dims", 
-        #     "gnn_hidden_channels", 
-        #     "gnn_out_channels",
-        #     "gnn_num_layers",
-        #     "gnn_model_cls",
-        #     "use_edge_attr",
-        #     "edge_label_embedding_dim",
-        #     "readout",
-        #     "cnn_hidden_dim",
-        #     "triplet_loss_distance_function",
-        #     "triplet_loss_margin",
-        #     "triplet_loss_swap",
-        #     "reconstruction_loss_weight",
-        #     "lr",
-        # )
+        self.save_hyperparameters()

@@ -62,7 +62,11 @@ def vicreg_loss(
         _var, _cov = var_cov_reg_term(b, gamma=variance_target, epsilon=epsilon)
         var += _var
         cov += _cov
-    return invariance_weight * inv + variance_weight * var + covariance_weight * cov
+    return {
+        'invariance_loss': invariance_weight * inv, 
+        'variance_loss': variance_weight * var,  
+        'covariance_loss': covariance_weight * cov
+    }
 
 
 

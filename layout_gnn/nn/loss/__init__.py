@@ -1,2 +1,2 @@
-from os_screens.nn.loss.simclr import NTXentLoss
-from os_screens.nn.loss.vicreg import VICRegLoss
+from layout_gnn.nn.loss.simclr import NTXentLoss
+from layout_gnn.nn.loss.vicreg import VICRegLoss

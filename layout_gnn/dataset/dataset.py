@@ -4,12 +4,15 @@ import requests
 import shutil
 import pandas as pd
 from pathlib import Path
-from typing import Dict, Optional, Sequence, Union
+from typing import Any, Dict, Optional, Sequence, Union
 
 import numpy as np
 from google.cloud import storage
 from skimage import io
 from torch.utils.data import Dataset
+from tqdm.auto import tqdm
+from joblib import Parallel, delayed, parallel_backend
+
 
 BUCKET_ID = 'crowdstf-rico-uiuc-4540'
 BUCKET_PATH = 'rico_dataset_v0.1/semantic_annotations.zip'
@@ -49,27 +52,31 @@ class RICOSemanticAnnotationsDataset(Dataset):
         
         self.label_color_map['Icon'] = next(iter(self.icon_label_color_map.values()))
         self.label_color_map['Text Button'] = next(iter(self.text_button_color_map.values()))
-        
-        
-    def __len__(self):
-        return len(self.files)
+        self.data = []
     
-    def _get_item(self, idx: int, only_data: Optional[bool] = None):
-        if only_data is None:
-            only_data = self._only_data
-
-        with open(self.files[idx], 'r') as fp:
+    def prepare(self):
+        with parallel_backend('threading', n_jobs=-1):
+            self.data = Parallel()(delayed(self.load_sample)(file) for file in tqdm(self.files))
+            
+    def load_sample(self, file: Path) -> Dict[str, Any]:
+        with open(file, 'r') as fp:
             json_file = json.load(fp)
             
-        sample = {'data': json_file, 'filename': self.files[idx].stem}
-        if not only_data:
-            image = io.imread(self.files[idx].with_suffix('.png'))[:,: , :3] # Removing the Alpha channel
-            sample['image'] = image            
+        sample = {'data': json_file, 'filename': file.stem}
+        if not self._only_data:
+            image = io.imread(file.with_suffix('.png'))[:,: , :3] # Removing the Alpha channel
+            sample['image'] = image 
             
         if self.transform:
             sample = self.transform(sample)
         
         return sample
+            
+    def _get_item(self, idx: int) -> Dict[str, Any]:
+        return self.data[idx] if self.data else self.load_sample(self.files[idx])
+    
+    def __len__(self):
+        return len(self.files)
 
     def __getitem__(self, idx):
         return self._get_item(idx)
@@ -78,17 +85,25 @@ class RICOSemanticAnnotationsDataset(Dataset):
 class RICOTripletsDataset(RICOSemanticAnnotationsDataset):
     VALID_TRIPLET_METRICS = {"iou", "ged"}
 
-    def __init__(self, triplets: Union[Sequence[Dict[str, str]], str, Path], triplet_metric: str = "ged", **kwargs):
+    def __init__(
+        self, 
+        root_dir: Union[str, Path], 
+        triplets: Union[Sequence[Dict[str, str]], str, Path], 
+        triplet_metric: str = "ged", **kwargs
+    ):
         if triplet_metric not in self.VALID_TRIPLET_METRICS:
             raise ValueError(
                 f"Invalid value {triplet_metric} for argument `triplet_metric`. "
                 f"Must be one of {self.VALID_TRIPLET_METRICS}"
             )
 
-        super().__init__(**kwargs)
+        super().__init__(root_dir=root_dir, **kwargs)
+
         if isinstance(triplets, (str, Path)):
-            with open(triplets) as f:
+            path = root_dir / triplets
+            with open(path) as f:
                 triplets = json.load(f)
+                
         self.triplets = list(filter(
             lambda x: "anchor" in x and f"pos_{triplet_metric}" in x and f"neg_{triplet_metric}" in x, 
             triplets,

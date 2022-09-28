@@ -1,0 +1,42 @@
+model_name: 'simgrace_vicreg_gcn'
+seed: 7
+dataset_cls: 'RICOSemanticAnnotationsDataset'
+dataset_config:
+  only_data: True
+  
+dataloader_config:
+  batch_size: 256
+  collate_fn: 'pyg_data_collate'
+
+trainer_config:
+  max_epochs: 128
+
+model_cls: 'LayoutGNNSimGRACEVICReg'
+model_config:
+  # Encoder (GNN) arguments
+  label_embedding_dim: 64
+  bbox_embedding_layer_dims:
+    - 32
+    - 64
+  gnn_hidden_channels: 256
+  gnn_out_channels: null
+  gnn_num_layers: 4
+  gnn_model_cls: 'GCN'
+  use_edge_attr: False
+  edge_label_embedding_dim: 16
+  readout: 'global_mean_pool'
+  # Projection head (MLP) arguments
+  projection_head_dims: 
+    - 256 
+    - 256
+  # SimGRACE parameters
+  perturbation_magnitude: 1.
+  # VICRegLoss parameters
+  invariance_weight: 25.
+  variance_weight: 25.
+  covariance_weight: 1.
+  variance_target: 1.
+  epsilon: 0.0001
+  # Optimizer parameters
+  lr: 0.02
+  weight_decay: 0.000001
