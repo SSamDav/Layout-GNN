@@ -4,7 +4,7 @@ import requests
 import shutil
 import pandas as pd
 from pathlib import Path
-from typing import Dict, Optional, Sequence, Union
+from typing import Any, Dict, Optional, Sequence, Union
 
 import numpy as np
 from google.cloud import storage
@@ -58,7 +58,7 @@ class RICOSemanticAnnotationsDataset(Dataset):
         with parallel_backend('threading', n_jobs=-1):
             self.data = Parallel()(delayed(self.load_sample)(file) for file in tqdm(self.files))
             
-    def load_sample(self, file):
+    def load_sample(self, file: Path) -> Dict[str, Any]:
         with open(file, 'r') as fp:
             json_file = json.load(fp)
             
@@ -72,25 +72,8 @@ class RICOSemanticAnnotationsDataset(Dataset):
         
         return sample
             
-    def _get_item(self, idx: int, only_data: Optional[bool] = None):
-        if self.data:
-            return self.data[idx]
-        
-        if only_data is None:
-            only_data = self._only_data
-
-        with open(self.files[idx], 'r') as fp:
-            json_file = json.load(fp)
-            
-        sample = {'data': json_file, 'filename': self.files[idx].stem}
-        if not only_data:
-            image = io.imread(self.files[idx].with_suffix('.png'))[:,: , :3] # Removing the Alpha channel
-            sample['image'] = image 
-            
-        if self.transform:
-            sample = self.transform(sample)   
-
-        return sample
+    def _get_item(self, idx: int) -> Dict[str, Any]:
+        return self.data[idx] if self.data else self.load_sample(self.files[idx])
     
     def __len__(self):
         return len(self.files)
