@@ -1,19 +1,24 @@
 import argparse
 import multiprocessing
+
+import torch.cuda as cuda
+import torch.nn.functional as F
+import torch_geometric.nn
 import yaml
+from aim.pytorch_lightning import AimLogger
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.utilities.seed import seed_everything
-from aim.pytorch_lightning import AimLogger
-import torch.cuda as cuda
 from torch.utils.data import DataLoader
-import torch_geometric.nn 
 from torchvision import transforms
-from layout_gnn.dataset import transformations, dataset as dataset_module
-from layout_gnn import lightning_module
-import torch.nn.functional as F
-import layout_gnn.utils 
 
+from layout_gnn import lightning_module
+from layout_gnn.dataset import collate
+from layout_gnn.dataset import dataset as dataset_module
+from layout_gnn.dataset.transforms.core import process_data, normalize_bboxes
+from layout_gnn.dataset.transforms.image import RescaleImage
+from layout_gnn.dataset.transforms.nx import ConvertLabelsToIndexes, add_networkx
+from layout_gnn.dataset.transforms.pyg import convert_graph_to_pyg
 
 # TODO: Move to a config file
 # Dataset and data loader arguments
@@ -38,18 +43,18 @@ if __name__ == "__main__":
     dataset = dataset_cls(root_dir=dataset_module.DATA_PATH, **config['dataset_config'])
     label_mappings = {k: i for i, k in enumerate(dataset.label_color_map)}
     dataset.transform = transforms.Compose([
-        transformations.process_data,
-        transformations.normalize_bboxes,
-        transformations.add_networkx,
-        transformations.RescaleImage(IMAGE_SIZE, IMAGE_SIZE, allow_missing_image=True),
-        transformations.ConvertLabelsToIndexes(
+        process_data,
+        normalize_bboxes,
+        add_networkx,
+        RescaleImage(IMAGE_SIZE, IMAGE_SIZE, allow_missing_image=True),
+        ConvertLabelsToIndexes(
             node_label_mappings=label_mappings,
             edge_label_mappings={"parent_of": 0, "child_of": 1} if config['model_config']['use_edge_attr'] else None,
         ),
-        transformations.convert_graph_to_pyg,
+        convert_graph_to_pyg,
     ])
     
-    config['dataloader_config']['collate_fn'] = getattr(layout_gnn.utils , config['dataloader_config']['collate_fn'])
+    config['dataloader_config']['collate_fn'] = getattr(collate , config['dataloader_config']['collate_fn'])
     data_loader = DataLoader(
        **{
             'dataset': dataset, 
