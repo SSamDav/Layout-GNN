@@ -67,9 +67,10 @@ class RICOSemanticAnnotationsDataset(Dataset):
         file_with_errors = json.load(open(self.data_path / 'file_with_error.json', 'r'))
         return sorted(f for f in (extracted_folder).glob('*.json') if f.stem not in file_with_errors)
 
-    def prepare(self, n_jobs: int = -1):
+    def prepare(self, n_jobs: int = -1, max_size: Optional[int] = None):
+        max_size = max_size or len(self.files)
         with parallel_backend('threading', n_jobs=n_jobs):
-            self.data = Parallel()(delayed(self.load_sample)(file) for file in tqdm(self.files))
+            self.data = Parallel()(delayed(self.load_sample)(file) for file in tqdm(self.files[:max_size]))
             
     def load_sample(self, file: Path) -> Dict[str, Any]:
         with open(file, 'r') as fp:
@@ -94,7 +95,7 @@ class RICOSemanticAnnotationsDataset(Dataset):
             return self.load_sample(self.files[idx])
     
     def __len__(self):
-        return len(self.files)
+        return len(self.data)
 
     def __getitem__(self, idx):
         return self._get_item(idx)

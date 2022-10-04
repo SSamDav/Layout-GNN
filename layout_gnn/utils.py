@@ -69,6 +69,16 @@ def pyg_data_collate(batch: List[Dict[str, Any]]) -> Batch:
     return Batch.from_data_list([sample["graph"] for sample in batch])
 
 
+def pyg_data_encdec_collate(batch: List[Dict[str, Any]]) -> Batch:
+    """Creates a torch_geometric Batch from a list of samples."""
+    return {
+        'graph': Batch.from_data_list([sample["graph"] for sample in batch]),
+        'image': torch.stack(
+            [torch.as_tensor(sample["image"], dtype=torch.float) for sample in batch]
+        )
+    } 
+
+
 def pyg_triplets_data_collate(batch: List[Dict[str, Any]]) -> Dict[str, Union[Batch, torch.Tensor]]:
     """Creates a dict with a batch of anchor, positive and negative graphs and the anchor image."""
     collated_batch = {}

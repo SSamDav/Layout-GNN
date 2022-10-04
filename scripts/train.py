@@ -48,7 +48,7 @@ if __name__ == "__main__":
         ),
         transformations.convert_graph_to_pyg,
     ])
-    
+    dataset.prepare(max_size=30)
     config['dataloader_config']['collate_fn'] = getattr(layout_gnn.utils , config['dataloader_config']['collate_fn'])
     data_loader = DataLoader(
        **{
