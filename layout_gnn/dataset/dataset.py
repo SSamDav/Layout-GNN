@@ -4,9 +4,8 @@ import requests
 import shutil
 import pandas as pd
 from pathlib import Path
-from typing import Any, Dict, Optional, Sequence, Union
+from typing import Any, Dict, List, Optional, Sequence, Union
 
-import numpy as np
 from google.cloud import storage
 from skimage import io
 from torch.utils.data import Dataset
@@ -14,27 +13,48 @@ from tqdm.auto import tqdm
 from joblib import Parallel, delayed, parallel_backend
 
 
-BUCKET_ID = 'crowdstf-rico-uiuc-4540'
-BUCKET_PATH = 'rico_dataset_v0.1/semantic_annotations.zip'
+# Local folders
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DATA_PATH = BASE_DIR / 'data'
-HIERARCHIES_FILE = 'hierarchies.zip'
-HIERARCHIES_URL =  'http://userinterfaces.aalto.fi/enrico/resources/hierarchies.zip'
+# Rico dataset
+RICO_BUCKET_ID = 'crowdstf-rico-uiuc-4540'
+RICO_BUCKET_PATH = 'rico_dataset_v0.1/semantic_annotations.zip'
+# Enrico dataset
+ENRICO_RESOURCES_BASE_URL = 'http://userinterfaces.aalto.fi/enrico/resources/'
+ENRICO_HIERARCHIES_FILE = 'hierarchies.zip'
+ENRICO_SEMANTIC_IMAGES_FILE = 'wireframes.zip'
 
-SEMANTIC_IMAGES_URL = 'http://userinterfaces.aalto.fi/enrico/resources/wireframes.zip'
-SEMANTIC_IMAGES_FILE = 'wireframes.zip'
 
 class RICOSemanticAnnotationsDataset(Dataset):
-    def __init__(self, root_dir: Optional[Path] = None, transform=None, only_data: bool = False):
+    def __init__(
+        self,
+        root_dir: Optional[Path] = None,
+        transform=None,
+        only_data: bool = False,
+        cache_items: bool = False,
+    ):
         self.data_path = root_dir or DATA_PATH
         self.transform = transform
         self._only_data = only_data
         self.data_path.mkdir(parents=True, exist_ok=True)
         
+        self.label_color_map = json.load(open(self.data_path / 'component_legend.json', 'r'))
+        self.icon_label_color_map = json.load(open(self.data_path / 'icon_legend.json', 'r'))
+        self.text_button_color_map = json.load(open(self.data_path / 'textButton_legend.json', 'r'))
+        
+        self.label_color_map['Icon'] = next(iter(self.icon_label_color_map.values()))
+        self.label_color_map['Text Button'] = next(iter(self.text_button_color_map.values()))
+
+        self.files = self.get_files()
+
+        # List that will store the cached items in memory
+        self.data: Optional[List[Optional[Dict[str, Any]]]] = [None] * len(self.files) if cache_items else None
+    
+    def get_files(self) -> List[Path]:
         zip_filename = self.data_path / 'semantic_annotations.zip'
         if not zip_filename.exists():
             client = storage.Client.create_anonymous_client()
-            bucket = client.bucket(BUCKET_ID)
+            bucket = client.bucket(RICO_BUCKET_ID)
   
             blob = bucket.blob('rico_dataset_v0.1/semantic_annotations.zip')
             blob.download_to_filename(zip_filename)
@@ -44,18 +64,11 @@ class RICOSemanticAnnotationsDataset(Dataset):
             with zipfile.ZipFile(zip_filename, 'r') as zip_ref:
                 zip_ref.extractall(self.data_path)
 
-        self._file_with_errors = json.load(open(self.data_path / 'file_with_error.json', 'r'))
-        self.files = list(f for f in sorted((extracted_folder).glob('*.json')) if f.stem not in self._file_with_errors)
-        self.label_color_map = json.load(open(self.data_path / 'component_legend.json', 'r'))
-        self.icon_label_color_map = json.load(open(self.data_path / 'icon_legend.json', 'r'))
-        self.text_button_color_map = json.load(open(self.data_path / 'textButton_legend.json', 'r'))
-        
-        self.label_color_map['Icon'] = next(iter(self.icon_label_color_map.values()))
-        self.label_color_map['Text Button'] = next(iter(self.text_button_color_map.values()))
-        self.data = []
-    
-    def prepare(self):
-        with parallel_backend('threading', n_jobs=-1):
+        file_with_errors = json.load(open(self.data_path / 'file_with_error.json', 'r'))
+        return sorted(f for f in (extracted_folder).glob('*.json') if f.stem not in file_with_errors)
+
+    def prepare(self, n_jobs: int = -1):
+        with parallel_backend('threading', n_jobs=n_jobs):
             self.data = Parallel()(delayed(self.load_sample)(file) for file in tqdm(self.files))
             
     def load_sample(self, file: Path) -> Dict[str, Any]:
@@ -73,7 +86,12 @@ class RICOSemanticAnnotationsDataset(Dataset):
         return sample
             
     def _get_item(self, idx: int) -> Dict[str, Any]:
-        return self.data[idx] if self.data else self.load_sample(self.files[idx])
+        if self.data is not None:
+            if self.data[idx] is None:
+                self.data[idx] = self.load_sample(self.files[idx])
+            return self.data[idx]
+        else:
+            return self.load_sample(self.files[idx])
     
     def __len__(self):
         return len(self.files)
@@ -87,7 +105,7 @@ class RICOTripletsDataset(RICOSemanticAnnotationsDataset):
 
     def __init__(
         self, 
-        root_dir: Union[str, Path], 
+        root_dir: Path, 
         triplets: Union[Sequence[Dict[str, str]], str, Path], 
         triplet_metric: str = "ged", **kwargs
     ):
@@ -126,20 +144,27 @@ class RICOTripletsDataset(RICOSemanticAnnotationsDataset):
         }
         
 
-class ENRICOSemanticAnnotationsDataset(Dataset):
-    def __init__(self, root_dir: Optional[Path] = None, transform=None, only_data: bool = False):
-        self.data_path = root_dir or DATA_PATH
-        self.transform = transform
-        self._only_data = only_data
-        self.data_path.mkdir(parents=True, exist_ok=True)
-        
+class ENRICOSemanticAnnotationsDataset(RICOSemanticAnnotationsDataset):
+    def __init__(
+        self,
+        root_dir: Optional[Path] = None,
+        transform=None,
+        only_data: bool = False,
+        cache_items: bool = False,
+    ) -> None:
+        super().__init__(root_dir=root_dir, transform=transform, only_data=only_data, cache_items=cache_items)
+
+        labels = pd.read_csv(self.data_path / 'design_topics.csv', dtype={'screen_id': str, 'topic': str})
+        self.labels: Dict[str, str] = labels.set_index('screen_id').to_dict()['topic']
+
+    def get_files(self) -> List[Path]:
         enrico_folder = self.data_path / 'enrico_semantic_annotations'
         enrico_folder.mkdir(exist_ok=True)
         
         # Download JSON Files
-        zip_filename = enrico_folder / HIERARCHIES_FILE
+        zip_filename = enrico_folder / ENRICO_HIERARCHIES_FILE
         if not zip_filename.exists():
-            req = requests.get(HIERARCHIES_URL)
+            req = requests.get(ENRICO_RESOURCES_BASE_URL + ENRICO_HIERARCHIES_FILE)
             with open(zip_filename, 'wb') as output_file:
                 output_file.write(req.content)
         
@@ -150,13 +175,11 @@ class ENRICOSemanticAnnotationsDataset(Dataset):
                 file.rename(enrico_folder / file.name)
                 
             shutil.rmtree(enrico_folder / 'hierarchies')
-            
-                
 
         # Download PNG Files
-        zip_filename = enrico_folder / SEMANTIC_IMAGES_FILE
+        zip_filename = enrico_folder / ENRICO_SEMANTIC_IMAGES_FILE
         if not zip_filename.exists():
-            req = requests.get(SEMANTIC_IMAGES_URL)
+            req = requests.get(ENRICO_RESOURCES_BASE_URL + ENRICO_SEMANTIC_IMAGES_FILE)
             with open(zip_filename, 'wb') as output_file:
                 output_file.write(req.content)
         
@@ -167,41 +190,12 @@ class ENRICOSemanticAnnotationsDataset(Dataset):
                 file.rename(enrico_folder / file.name)
                 
             shutil.rmtree(enrico_folder / 'wireframes')
-            
-        
-        self.labels = pd.read_csv(self.data_path / 'design_topics.csv', dtype={'screen_id': str, 'topic': str})
-        self.labels = self.labels.set_index('screen_id').to_dict()['topic']
+
         issues = pd.read_csv(self.data_path / 'enrico_issues.csv', dtype=str)
         issue_files = issues[issues['source'].isin(['wireframe', 'hierarchy'])]['screen_id'].to_list()
-        
-        self.files = list(f for f in sorted((enrico_folder).glob('*.json')) if f.stem not in issue_files)
-        self.label_color_map = json.load(open(self.data_path / 'component_legend.json', 'r'))
-        self.icon_label_color_map = json.load(open(self.data_path / 'icon_legend.json', 'r'))
-        self.text_button_color_map = json.load(open(self.data_path / 'textButton_legend.json', 'r'))
-        
-        self.label_color_map['Icon'] = next(iter(self.icon_label_color_map.values()))
-        self.label_color_map['Text Button'] = next(iter(self.text_button_color_map.values()))
-        
-        
-    def __len__(self):
-        return len(self.files)
-    
-    def _get_item(self, idx: int, only_data: Optional[bool] = None):
-        if only_data is None:
-            only_data = self._only_data
+        return sorted(f for f in (enrico_folder).glob('*.json') if f.stem not in issue_files)
 
-        with open(self.files[idx], 'r') as fp:
-            json_file = json.load(fp)
-            
-        sample = {'data': json_file, 'filename': self.files[idx].stem}
-        if not only_data:
-            image = io.imread(self.files[idx].with_suffix('.png'))[:,: , :3] # Removing the Alpha channel
-            sample['image'] = image            
-            
-        if self.transform:
-            sample = self.transform(sample)
-        
+    def load_sample(self, file: Path) -> Dict[str, Any]:
+        sample = super().load_sample(file)
+        sample["label"] = self.labels[sample["filename"]]
         return sample
-
-    def __getitem__(self, idx):
-        return self._get_item(idx)
