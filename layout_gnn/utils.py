@@ -1,12 +1,10 @@
-from typing import Any, Dict, List, Optional, Tuple, Union
+from collections import deque
+from typing import Any, Dict, Iterator, Tuple
 
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-import numpy.typing as npt
-import torch
-from torch_geometric.data import Batch
 
 
 def plot_datapoint(datapoint: Dict[str, Any],
@@ -32,7 +30,7 @@ def plot_datapoint(datapoint: Dict[str, Any],
     nx.draw(datapoint['graph'], node_color=color_node_map, ax=axes[0])
     return fig
     
-    
+
 def draw_screen(root: Dict[str, Any],
                 ax: plt.Axes, 
                 color_label_map: Dict[str, Dict[str, Any]]):
@@ -42,72 +40,64 @@ def draw_screen(root: Dict[str, Any],
         root (Dict[str, Any]): Root node to the hierarchical tree.
         ax (plt.Axes): Axe where the screen is drawn.
         color_label_map (Dict[str, Dict[str, Any]]): Color to be used for each label.
-    """    
-    stack = [root]
-    while stack:
-        current_node = stack.pop(0)
-        stack.extend(current_node['children'])
-        
-        w, h = current_node['bbox'][2] - current_node['bbox'][0], current_node['bbox'][3] - current_node['bbox'][1]
-        color = color_label_map.get(current_node['label'], None)
+    """
+    for node in breadth_first_traversal(root):
+        w, h = node['bbox'][2] - node['bbox'][0], node['bbox'][3] - node['bbox'][1]
+        color = color_label_map.get(node['label'], None)
         if color:
-            rect = patches.Rectangle((current_node['bbox'][0], current_node['bbox'][1]), 
+            rect = patches.Rectangle((node['bbox'][0], node['bbox'][1]), 
                                       w, 
                                       h, 
                                       facecolor=color['hex'],
                                       edgecolor='w',
                                       linewidth=1)
             ax.add_patch(rect)
-        
-
-def default_data_collate(batch):
-    return batch
 
 
-def pyg_data_collate(batch: List[Dict[str, Any]]) -> Batch:
-    """Creates a torch_geometric Batch from a list of samples."""
-    return Batch.from_data_list([sample["graph"] for sample in batch])
-
-
-def pyg_triplets_data_collate(batch: List[Dict[str, Any]]) -> Dict[str, Union[Batch, torch.Tensor]]:
-    """Creates a dict with a batch of anchor, positive and negative graphs and the anchor image."""
-    collated_batch = {}
-    for k in ("anchor", "pos", "neg"):
-        collated_batch[k] = Batch.from_data_list([sample[k]["graph"] for sample in batch])
-
-    if "image" in batch[0]["anchor"]:
-        collated_batch["image"] = torch.stack(
-            [torch.as_tensor(sample["anchor"]["image"], dtype=torch.float) for sample in batch]
-        )
-
-    return collated_batch
-
-def draw_class_image(image_shape: Tuple[int, int],
-                     node_labels: Dict[str, Any],
-                     datapoint: Dict[str, Any],
-                     img_class: Optional[npt.ArrayLike] = None) -> np.ndarray:
+def draw_class_image(
+    root: Dict[str, Any],
+    node_labels: Dict[str, int],
+    image_shape: Tuple[int, int] = (256, 256),
+) -> np.ndarray:
     """Creates an class image, one hot image where the 3rd dimention correspond to class labels.
 
     Args:
-        image_shape (Tuple[int, int]): Image shape.
+        root (Dict[str, Any]): Root of the tree used to compute the class image.
         node_labels (Dict[str, Any]): Mapping label to int.
-        datapoint (Dict[str, Any]): Datapoint used to compute the class image.
-        img_class (Optional[npt.ArrayLike], optional): Current image class. Defaults to None.
+        image_shape (Tuple[int, int]): Image shape.
 
     Returns:
         np.ndarray: Image class.
     """    
-    x0, y0, x1, y1 = datapoint['bbox']
-    x0, x1 = int(image_shape[0]*x0), int(image_shape[0]*x1)
-    y0, y1 = int(image_shape[1]*y0), int(image_shape[1]*y1)
-    
-    if img_class is None:
-        img_class = np.zeros((*image_shape, len(node_labels)))
-        
-    label_idx = node_labels[datapoint['label']]
-    img_class[y0:y1, x0:x1, label_idx] = 1
-    
-    for child in  datapoint.get('children', []):
-        img_class = draw_class_image(image_shape, node_labels, child, img_class=img_class)
-        
+    img_class = np.zeros((*image_shape, max(node_labels.values())+1), dtype=bool)
+
+    for node in deph_first_traversal(root):
+        label_idx = node_labels.get(node['label'])
+        if label_idx is not None:
+            x0, y0, x1, y1 = node['bbox']
+            x0, x1 = int(image_shape[0]*x0), int(image_shape[0]*x1)
+            y0, y1 = int(image_shape[1]*y0), int(image_shape[1]*y1)
+            img_class[y0:y1, x0:x1, label_idx] = True
+
     return img_class
+
+
+def deph_first_traversal(root: Dict[str, Any]) -> Iterator[Dict[str, Any]]:
+    yield root
+    for child in root.get("children", ()):
+        yield from deph_first_traversal(child)
+
+
+def breadth_first_traversal(root: Dict[str, Any]) -> Iterator[Dict[str, Any]]:
+    stack = deque((root,))
+    while stack:
+        node = stack.popleft()
+        stack.extend(node.get("children", ()))
+        yield node
+
+
+def get_num_nodes(root: Dict[str, Any], use_cache: bool = False) -> int:
+    if not use_cache or "__num_nodes__" not in root:
+        root["__num_nodes__"] = sum(1 for _ in deph_first_traversal(root))
+
+    return root["__num_nodes__"]
