@@ -25,12 +25,24 @@ class PairwiseMetricLoader:
     def get_matrix(
         self,
         values: Iterable[Tuple[str, str, float]],
+        matrix_init: Callable[[Tuple[int, int]], np.ndarray] = np.zeros,
     ) -> np.ndarray:
-        matrix = np.zeros((len(self.dataset), len(self.dataset)))
+        matrix = matrix_init((len(self.dataset), len(self.dataset)))
         for k1, k2, v in values:
             i, j = self.key_to_index[k1], self.key_to_index[k2]
             matrix[i, j] = matrix[j, i] = v
         return matrix
+
+    def get_edges(
+        self,
+        values: Iterable[Tuple[str, str, float]],
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        edges, edge_values = [], []
+        for k1, k2, v in values:
+            i, j = self.key_to_index[k1], self.key_to_index[k2]
+            edges.append((i, j))
+            edge_values.append(v)
+        return np.asarray(edges, dtype=int), np.asarray(edge_values)
 
     def iter_values_from_csv(self, filepath: Union[str, Path], verbose: int = 0) -> Iterator[Tuple[str, str, float]]:
         # NOTE: This method is ~15x faster than using pd.read_csv and then iterrows
@@ -45,8 +57,23 @@ class PairwiseMetricLoader:
 
             yield from tqdm(map(parse_line, f), desc=f"Loading {filepath}", disable=(verbose == 0))
 
-    def get_matrix_from_csv(self, filepath: Union[str, Path], verbose: int = 0):
-        return self.get_matrix(self.iter_values_from_csv(filepath=filepath, verbose=verbose))
+    def get_matrix_from_csv(
+        self,
+        filepath: Union[str, Path],
+        verbose: int = 0,
+        matrix_init: Callable[[Tuple[int, int]], np.ndarray] = np.zeros,
+    ) -> np.ndarray:
+        return self.get_matrix(
+            values=self.iter_values_from_csv(filepath=filepath, verbose=verbose),
+            matrix_init=matrix_init,
+        )
+
+    def get_edges_from_csv(
+        self,
+        filepath: Union[str, Path],
+        verbose: int = 0,
+    ) -> np.ndarray:
+        return self.get_edges(values=self.iter_values_from_csv(filepath=filepath, verbose=verbose))
 
 
 class PairwiseMetricCalculator(PairwiseMetricLoader):
@@ -93,8 +120,21 @@ class PairwiseMetricCalculator(PairwiseMetricLoader):
         self,
         num_processes: Optional[int] = None,
         verbose: int = 0,
+        matrix_init: Callable[[Tuple[int, int]], np.ndarray] = np.zeros,
     ) -> np.ndarray:
-        return self.get_matrix(self.iter_values(num_processes=num_processes, verbose=verbose))
+        return self.get_matrix(
+            values=self.iter_values(num_processes=num_processes, verbose=verbose),
+            matrix_init=matrix_init,
+        )
+
+    def compute_edges(
+        self,
+        num_processes: Optional[int] = None,
+        verbose: int = 0,
+    ) -> np.ndarray:
+        return self.get_edges(
+            values=self.iter_values(num_processes=num_processes, verbose=verbose),
+        )
 
     def write_values_to_csv(
         self,
