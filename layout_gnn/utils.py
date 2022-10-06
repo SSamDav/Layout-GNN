@@ -1,10 +1,12 @@
 from collections import deque
-from typing import Any, Dict, Iterator, Tuple
+from typing import Any, Dict, Iterator, Optional, Tuple
 
+import matplotlib as mpl
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
+import numpy.typing as npt
 
 
 def plot_datapoint(datapoint: Dict[str, Any],
@@ -101,3 +103,32 @@ def get_num_nodes(root: Dict[str, Any], use_cache: bool = False) -> int:
         root["__num_nodes__"] = sum(1 for _ in deph_first_traversal(root))
 
     return root["__num_nodes__"]
+
+
+def plot_embeddings(
+    embeddings: npt.ArrayLike,
+    labels: Optional[npt.ArrayLike] = None,
+    figsize: Tuple[int, int] = (16, 9),
+    title: Optional[str] = None,
+    **kwargs
+):
+    _, ax = plt.subplots(figsize=figsize)
+
+    embeddings = np.asarray(embeddings)
+
+    if labels is not None:
+        labels = np.asarray(labels)
+        unique_labels = np.unique(labels)
+        cmap = mpl.colormaps[f"tab{10 if len(unique_labels) <= 10 else 20}"]
+
+        for i, label in enumerate(unique_labels):
+            points_to_plot = embeddings[labels==label]
+            ax.scatter(*points_to_plot.T, label=label, color=cmap(i), **kwargs)
+        ax.legend(loc="center left", bbox_to_anchor=(1, 0.5))
+    else:
+        ax.scatter(*embeddings.T, **kwargs)
+
+    if title:
+        ax.set_title(title)
+
+    return ax
