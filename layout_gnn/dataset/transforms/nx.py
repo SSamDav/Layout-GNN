@@ -1,6 +1,8 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Iterable, Optional
 
 import networkx as nx
+
+from layout_gnn.dataset.utils import get_labels_mapping
 
 
 def add_networkx(sample: Dict[str, Any]) -> Dict[str, Any]:
@@ -35,11 +37,11 @@ class ConvertLabelsToIndexes:
     """Converts the "label" attributes in nodes and edges from a string to an int, according to the given mappings."""
     def __init__(
         self, 
-        node_label_mappings: Optional[Dict[str, int]] = None, 
-        edge_label_mappings: Optional[Dict[str, int]] = None,
+        node_labels: Optional[Iterable[str]] = None, 
+        edge_labels: Optional[Iterable[str]] = None,
     ):
-        self.node_label_mappings = node_label_mappings
-        self.edge_label_mappings = edge_label_mappings
+        self.node_label_mappings = get_labels_mapping(node_labels) if node_labels is not None else None
+        self.edge_label_mappings = get_labels_mapping(edge_labels) if edge_labels is not None else None
 
     def __call__(self, sample: Dict[str, Any]) -> Dict[str, Any]:
         g: nx.DiGraph = sample["graph"]

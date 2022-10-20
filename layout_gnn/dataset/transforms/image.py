@@ -1,7 +1,8 @@
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Iterable, Tuple
 
 from skimage import transform
 
+from layout_gnn.dataset.utils import get_labels_mapping
 from layout_gnn.utils import draw_class_image
 
 
@@ -24,8 +25,8 @@ class RescaleImage:
 
 
 class DrawClassImage:
-    def __init__(self, node_labels: Dict[str, int], image_shape: Tuple[int, int] = (256, 256)) -> None:
-        self.node_labels = node_labels
+    def __init__(self, node_labels: Iterable[int], image_shape: Tuple[int, int] = (256, 256)) -> None:
+        self.node_labels = get_labels_mapping(node_labels)
         self.image_shape = image_shape
     
     def __call__(self, sample: Dict[str, Any]) -> Dict[str, Any]:
