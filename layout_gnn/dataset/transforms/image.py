@@ -25,7 +25,7 @@ class RescaleImage:
 
 
 class DrawClassImage:
-    def __init__(self, node_labels: Iterable[int], image_shape: Tuple[int, int] = (256, 256)) -> None:
+    def __init__(self, node_labels: Iterable[str], image_shape: Tuple[int, int] = (256, 256)) -> None:
         self.node_labels = get_labels_mapping(node_labels)
         self.image_shape = image_shape
     
