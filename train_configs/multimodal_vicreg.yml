@@ -1,0 +1,43 @@
+model_name: 'multimodal_vicreg'
+seed: 7
+dataset_cls: 'RICOSemanticAnnotationsDataset'
+dataset_config:
+  only_data: False
+  
+dataloader_config:
+  batch_size: 256
+  collate_fn: 'graph_image_tuple_collate'
+
+trainer_config:
+  max_epochs: 128
+
+model_cls: 'LayoutGNNMultimodalVICReg'
+model_config:
+  # Encoder (GNN) arguments
+  label_embedding_dim: 64
+  bbox_embedding_layer_dims:
+    - 32
+    - 64
+  gnn_hidden_channels: 300
+  gnn_out_channels: null
+  gnn_num_layers: 5
+  gnn_model_cls: 'GIN'
+  use_edge_attr: False
+  edge_label_embedding_dim: 16
+  readout: 'global_mean_pool'
+  # Encoder (CNN) arguments
+  cnn: "resnet18"
+  freeze_cnn: True
+  # Projection head (MLP) arguments
+  projection_head_dims: 
+    - 300 
+    - 300
+  # VICRegLoss parameters
+  invariance_weight: 25.
+  variance_weight: 25.
+  covariance_weight: 1.
+  variance_target: 1.
+  epsilon: 0.0001
+  # Optimizer parameters
+  lr: 0.02
+  weight_decay: 0.000001
