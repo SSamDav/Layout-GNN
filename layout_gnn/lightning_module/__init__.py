@@ -1,2 +1,3 @@
 from layout_gnn.lightning_module.enc_dec import LayoutGraphModelCNNNeuralRasterizer
+from layout_gnn.lightning_module.joint_embedding import LayoutGNNMultimodalNTXent, LayoutGNNMultimodalVICReg
 from layout_gnn.lightning_module.simgrace import LayoutGNNSimGRACENTXent, LayoutGNNSimGRACEVICReg
