@@ -9,7 +9,7 @@ dataloader_config:
   collate_fn: 'pyg_data_collate'
 
 trainer_config:
-  max_epochs: 128
+  max_epochs: 256
 
 model_cls: 'LayoutGNNSimGRACEVICReg'
 model_config:

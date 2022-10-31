@@ -53,6 +53,7 @@ if __name__ == "__main__":
         convert_graph_to_pyg,
     ])
     
+    dataset.prepare()
     config['dataloader_config']['collate_fn'] = getattr(collate , config['dataloader_config']['collate_fn'])
     data_loader = DataLoader(
        **{
