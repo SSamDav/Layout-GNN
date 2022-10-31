@@ -138,7 +138,7 @@ class EncoderDecoder(LightningModule):
         """
         Args:
             encoder (nn.Module): Model that receives the layout graphs and returns the embeddings.
-            decoder (nn.Module, optional): Model that resonstructs the layout image from the embedding. If not
+            decoder (nn.Module): Model that reconstructs the layout image from the embedding. If not
                 provided, the reconstruction loss is not considered.
             triplet_loss_distance_function (Callable[[torch.Tensor, torch.Tensor], torch.Tensor], optional): the 
                 distance metric to be used in the triplet loss. If not provided, euclidean distance is used.
