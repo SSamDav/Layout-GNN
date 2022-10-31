@@ -154,7 +154,7 @@ class EncoderDecoder(LightningModule):
         self.encoder = encoder
         self.decoder = decoder
 
-        self.reconstruction_loss = nn.MSELoss(reduction='sum') if decoder is not None else None
+        self.reconstruction_loss = nn.MSELoss(reduction='sum')
 
         self.lr = lr
 
