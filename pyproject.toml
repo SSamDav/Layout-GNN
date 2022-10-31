@@ -25,6 +25,7 @@ aim = "^3.8.1"
 ipdb = "^0.13.9"
 pymde = "^0.1.15"
 PyYAML = "^6.0"
+apted = "^1.0.3"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

@@ -1,21 +1,16 @@
 import json
 import gzip
-import random
 from pathlib import Path
 
-from multiprocessing.pool import ThreadPool
-from multiprocessing import Pool
-from joblib import Parallel, delayed
-
-from functools import partial
-
-from sklearn import neighbors
+from layout_gnn.dataset.collate import default_data_collate
 from layout_gnn.dataset.dataset import RICOSemanticAnnotationsDataset
-from layout_gnn.dataset import transformations
-from layout_gnn.similarity_metrics import compute_edit_distance, compute_iou
+from layout_gnn.dataset.transforms.core import process_data, normalize_bboxes
+from layout_gnn.dataset.transforms.nx import add_networkx
+from layout_gnn.pairwise_metrics.ged import compute_edit_distance
+from layout_gnn.pairwise_metrics.iou import compute_iou
 from layout_gnn.utils import *
 from torch.utils.data import DataLoader, Dataset
-from torchvision import transforms
+from torchvision.transforms import Compose
 from tqdm.auto import tqdm
 
 ROOT_PATH = Path.cwd()
@@ -36,10 +31,10 @@ class NeighborsDataset(Dataset):
         super().__init__()
         
         self.rico_dataset = RICOSemanticAnnotationsDataset(
-            transform=transforms.Compose([
-                transformations.process_data,
-                transformations.normalize_bboxes,
-                transformations.add_networkx,
+            transform=Compose([
+                process_data,
+                normalize_bboxes,
+                add_networkx,
             ]),
             only_data=True
         )
