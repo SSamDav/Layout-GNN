@@ -132,7 +132,7 @@ class EncoderDecoder(LightningModule):
     def __init__(
         self, 
         encoder: nn.Module, 
-        decoder: nn.Module = None,
+        decoder: nn.Module,
         lr: float = 0.001,
     ):
         """
