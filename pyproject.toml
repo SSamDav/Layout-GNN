@@ -26,6 +26,7 @@ ipdb = "^0.13.9"
 pymde = "^0.1.15"
 PyYAML = "^6.0"
 apted = "^1.0.3"
+optuna = "^3.0.3"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

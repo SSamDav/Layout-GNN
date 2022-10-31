@@ -35,13 +35,13 @@ class JointEmbedding(LightningModule):
         self.lr = lr
 
     def training_step(self, batch: Any, batch_idx: int):
-        return self.forward_loss(batch, log_preffix="train", on_epoch=True)
+        return self.forward_loss(batch, log_preffix="train", on_epoch=True, on_step=True)
 
     def validation_step(self, batch: Any, batch_idx: int):
-        return self.forward_loss(batch, log_preffix="val", on_epoch=True)
+        return self.forward_loss(batch, log_preffix="val", on_epoch=True, on_step=True)
 
     def test_step(self, batch: Any, batch_idx: int):
-        return self.forward_loss(batch, log_preffix="test", on_epoch=True)
+        return self.forward_loss(batch, log_preffix="test", on_epoch=True, on_step=True)
 
     def forward_loss(
         self,
@@ -51,7 +51,6 @@ class JointEmbedding(LightningModule):
     ) -> torch.Tensor:
         z, z_ = self(inputs)
         loss = self.loss_fn(z, z_)
-        
         if not isinstance(loss, dict):
             if log_preffix is not None:
                 self.log(f"{log_preffix}_loss", loss, **kwargs)
@@ -190,7 +189,7 @@ class LayoutGNNMultimodal(JointEmbedding):
         )
 
 
-class LayoutGNNMultimodalNTXent(JointEmbedding):
+class LayoutGNNMultimodalNTXent(LayoutGNNMultimodal):
     """Extends `LayoutGNNMultimodal` to instantiate the NTXent loss and log hparams."""
 
     # TODO: Review defaults
@@ -237,7 +236,7 @@ class LayoutGNNMultimodalNTXent(JointEmbedding):
         self.save_hyperparameters()
 
 
-class LayoutGNNMultimodalVICReg(JointEmbedding):
+class LayoutGNNMultimodalVICReg(LayoutGNNMultimodal):
     """Extends `LayoutGNNSimGRACE` to instantiate the VICReg loss and log hparams."""
 
     # TODO: Review defaults
@@ -297,4 +296,4 @@ class LayoutGNNMultimodalVICReg(JointEmbedding):
         self.save_hyperparameters()
         
     def configure_optimizers(self):
-        return torch.optim.SGD(self.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
+        return torch.optim.SGD(self.parameters(), lr=self.lr, weight_decay=self.weight_decay)

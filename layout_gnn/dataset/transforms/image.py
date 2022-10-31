@@ -4,6 +4,8 @@ from skimage import transform
 
 from layout_gnn.dataset.utils import get_labels_mapping
 from layout_gnn.utils import draw_class_image
+from functools import partial
+from torchvision.transforms._presets import ImageClassification
 
 
 class RescaleImage:
@@ -36,3 +38,19 @@ class DrawClassImage:
             image_shape=self.image_shape,
         )
         return sample
+    
+class ResNet18Processing:
+    """Recales the image to a specified width and height.
+    """    
+    def __init__(self, allow_missing_image: bool = False):
+        self._allow_missing_image = allow_missing_image
+        self.transform = partial(ImageClassification, crop_size=64, resize_size=(64, 64))()
+        
+    def __call__(self, sample):
+        if self._allow_missing_image and "image" not in sample:
+            return sample
+
+        return {
+            **sample,
+            'image': self.transform(sample['image'])
+        }
