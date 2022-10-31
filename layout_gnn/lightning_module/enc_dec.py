@@ -364,15 +364,12 @@ class LayoutGraphModelCNNNeuralRasterizerEncDec(EncoderDecoder):
             readout=readout,
             **kwargs,
         )
-        if cnn_output_dim is not None and cnn_output_size is not None:
-            decoder = CNNNeuralRasterizer(
-                input_dim=gnn_out_channels if gnn_out_channels is not None else gnn_hidden_channels,
-                output_dim=cnn_output_dim,
-                hidden_dim=cnn_hidden_dim,
-                output_size=cnn_output_size,
-            )
-        else:
-            decoder = None
+        decoder = CNNNeuralRasterizer(
+            input_dim=gnn_out_channels if gnn_out_channels is not None else gnn_hidden_channels,
+            output_dim=cnn_output_dim,
+            hidden_dim=cnn_hidden_dim,
+            output_size=cnn_output_size,
+        )
 
         super().__init__(
             encoder=encoder,
