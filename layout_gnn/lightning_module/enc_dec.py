@@ -308,7 +308,7 @@ class LayoutGraphModelCNNNeuralRasterizerEncDec(EncoderDecoder):
         readout: Optional[Callable[[torch.Tensor, Data], torch.Tensor]] = None,
         cnn_output_dim: Optional[int] = None,
         cnn_hidden_dim: int = 8,
-        cnn_output_size: int = None,
+        cnn_output_size: int = 64,
         lr: float = 0.001,
         **kwargs
     ):
@@ -335,7 +335,7 @@ class LayoutGraphModelCNNNeuralRasterizerEncDec(EncoderDecoder):
             cnn_output_dim (Optional[int]): Number of channels of the decoded image. If not provided, the decoder is
                 not used.
             cnn_hidden_dim (int): Hidden dimension of the decoder CNN.
-            cnn_output_size (Optional[int]): Size of the decoded image. If not provided, the decoder is not used.
+            cnn_output_size (int): Size of the decoded image.
             triplet_loss_distance_function (Callable[[torch.Tensor, torch.Tensor], torch.Tensor], optional): the 
                 distance metric to be used in the triplet loss. If not provided, euclidean distance is used.
             triplet_loss_margin (float, optional): Margin of the triplet loss. Defaults to 1.0.
