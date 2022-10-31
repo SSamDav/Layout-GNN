@@ -151,20 +151,26 @@ class LayoutGNNMultimodal(JointEmbedding):
 
         if isinstance(cnn, str):
             cnn = getattr(torchvision.models, cnn)(weights="DEFAULT")
+            # TODO: this is assuming the cnn has an `fc` module as the last layer last fc layer
+            in_features_cnn = cnn.fc.in_features
+            cnn.fc = nn.Identity()
+        else:
+            # TODO: this is assuming that the last module in `cnn.modules()` is the final layer (is this always the case?)
+            #  and that it is a Linear layer (otherwise, instead of `out_features` we would need to get some other
+            #  property).
+            last_cnn_layer = None
+            for last_cnn_layer in cnn.modules():
+                pass
+            assert last_cnn_layer is not None, "Empty CNN module provided"
+            in_features_cnn = last_cnn_layer.out_features
+
         if freeze_cnn:
             for param in cnn.parameters():
                 param.requires_grad = False
 
         # Build the projection heads
         in_features_gnn = gnn_out_channels or gnn_hidden_channels  # encoder output size
-        # TODO: this is assuming that the last module in `cnn.modules()` is the final layer (is this always the case?)
-        #  and that it is a Linear layer (otherwise, instead of `out_features` we would need to get some other
-        #  property).
-        last_cnn_layer = None
-        for last_cnn_layer in cnn.modules():
-            pass
-        assert last_cnn_layer is not None, "Empty CNN module provided"
-        in_features_cnn = last_cnn_layer.out_features
+
 
         if projection_head_dims is None:
             # By default, we use a two layer MLP with the same layer dimensions as the encoder output
