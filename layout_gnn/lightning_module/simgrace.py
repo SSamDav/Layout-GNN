@@ -128,7 +128,7 @@ class SimGRACEEncDec(SimGRACE):
         y_pred = self.decoder(z.unsqueeze(-1).unsqueeze(-1))
         # The target images are in the format [batch, size, size, dim], but we need [batch, dim, size, size]
         y_true = inputs["image"].transpose(1, -1)
-        decoder_loss = self.decoder_loss_weight * self.decoder_loss(y_pred, y_true)
+        decoder_loss =  self.decoder_loss_weight * self.decoder_loss(y_pred, y_true)
         
         if not isinstance(loss, dict):
             loss += decoder_loss
