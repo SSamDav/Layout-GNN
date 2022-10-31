@@ -41,15 +41,14 @@ if __name__ == "__main__":
     
     dataset_cls = getattr(dataset_module, config['dataset_cls'])
     dataset = dataset_cls(root_dir=dataset_module.DATA_PATH, **config['dataset_config'])
-    label_mappings = {k: i for i, k in enumerate(dataset.label_color_map)}
     dataset.transform = transforms.Compose([
         process_data,
         normalize_bboxes,
         add_networkx,
         RescaleImage(IMAGE_SIZE, IMAGE_SIZE, allow_missing_image=True),
         ConvertLabelsToIndexes(
-            node_label_mappings=label_mappings,
-            edge_label_mappings={"parent_of": 0, "child_of": 1} if config['model_config']['use_edge_attr'] else None,
+            node_labels=dataset.label_color_map,
+            edge_labels=("parent_of", "child_of") if config['model_config']['use_edge_attr'] else None,
         ),
         convert_graph_to_pyg,
     ])
@@ -74,7 +73,7 @@ if __name__ == "__main__":
         
     model = model_cls(
         **{
-            'num_labels': len(label_mappings) + 1,
+            'num_labels': len(dataset.label_color_map) + 1,
             'num_edge_labels': 2,
             **config['model_config']
         }

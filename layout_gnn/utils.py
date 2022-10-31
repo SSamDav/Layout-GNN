@@ -73,7 +73,7 @@ def draw_class_image(
     """    
     img_class = np.zeros((*image_shape, max(node_labels.values())+1), dtype=bool)
 
-    for node in deph_first_traversal(root):
+    for node in depth_first_traversal(root):
         label_idx = node_labels.get(node['label'])
         if label_idx is not None:
             x0, y0, x1, y1 = node['bbox']
@@ -84,10 +84,10 @@ def draw_class_image(
     return img_class
 
 
-def deph_first_traversal(root: Dict[str, Any]) -> Iterator[Dict[str, Any]]:
+def depth_first_traversal(root: Dict[str, Any]) -> Iterator[Dict[str, Any]]:
     yield root
     for child in root.get("children", ()):
-        yield from deph_first_traversal(child)
+        yield from depth_first_traversal(child)
 
 
 def breadth_first_traversal(root: Dict[str, Any]) -> Iterator[Dict[str, Any]]:
@@ -100,7 +100,7 @@ def breadth_first_traversal(root: Dict[str, Any]) -> Iterator[Dict[str, Any]]:
 
 def get_num_nodes(root: Dict[str, Any], use_cache: bool = False) -> int:
     if not use_cache or "__num_nodes__" not in root:
-        root["__num_nodes__"] = sum(1 for _ in deph_first_traversal(root))
+        root["__num_nodes__"] = sum(1 for _ in depth_first_traversal(root))
 
     return root["__num_nodes__"]
 
