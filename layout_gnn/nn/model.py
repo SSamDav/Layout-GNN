@@ -42,7 +42,7 @@ class LayoutGraphModel(nn.Module):
                 Defaults to False.
             num_edge_labels (Optional[int], optional): Number of classes in the edge label attribute. Defaults to None.
             edge_label_embedding_dim (Optional[int], optional): _description_. Defaults to None.
-            readout (Optional[Callable[[torch.Tensor, torch.Tensot], torch.Tensor]]): Callable that receives the tensor
+            readout (Optional[Callable[[torch.Tensor, torch.Tensor], torch.Tensor]]): Callable that receives the tensor
                 of node embeddings and the tensor of batch indexes and returns the graph embeddings. If None, the
                 tensor of node embeddings is returned.
         Raises:
