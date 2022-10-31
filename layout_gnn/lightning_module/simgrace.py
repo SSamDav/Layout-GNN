@@ -131,6 +131,9 @@ class SimGRACEEncDec(SimGRACE):
         decoder_loss =  self.decoder_loss_weight * self.decoder_loss(y_pred, y_true)
         
         if not isinstance(loss, dict):
+            if log_preffix is not None:
+                self.log(f"{log_preffix}_encoder_loss", loss, **kwargs)
+                self.log(f"{log_preffix}_decoder_loss", decoder_loss, **kwargs)
             loss += decoder_loss
             if log_preffix is not None:
                 self.log(f"{log_preffix}_loss", loss, **kwargs)
