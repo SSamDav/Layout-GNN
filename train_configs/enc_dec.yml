@@ -1,0 +1,34 @@
+model_name: 'EncDec'
+seed: 7
+dataset_cls: 'RICOSemanticAnnotationsDataset'
+dataset_config:
+  only_data: False
+  cache_items: False
+  
+dataloader_config:
+  batch_size: 256
+  collate_fn: 'pyg_data_encdec_collate'
+
+trainer_config:
+  max_epochs: 128
+
+model_cls: 'LayoutGraphModelCNNNeuralRasterizerEncDec'
+model_config:
+  # Encoder (GNN) arguments
+  label_embedding_dim: 64
+  bbox_embedding_layer_dims:
+    - 32
+    - 64
+  gnn_hidden_channels: 256
+  gnn_out_channels: null
+  gnn_num_layers: 4
+  gnn_model_cls: 'GCN'
+  use_edge_attr: False
+  edge_label_embedding_dim: 16
+  readout: 'global_mean_pool'
+  # Decoder (CNN) arguments
+  cnn_output_dim: 3
+  cnn_hidden_dim: 16
+  cnn_output_size: 64
+  # Optimizer parameters
+  lr: 0.001

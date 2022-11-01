@@ -127,6 +127,68 @@ class EncoderDecoderWithTripletLoss(LightningModule):
         return torch.optim.Adam(self.parameters(), lr=self.lr)
 
 
+class EncoderDecoder(LightningModule):
+    """LightningModule to train the graph layout encoder with a combination of triplet and reconstruction loss."""
+    def __init__(
+        self, 
+        encoder: nn.Module, 
+        decoder: nn.Module,
+        lr: float = 0.001,
+    ):
+        """
+        Args:
+            encoder (nn.Module): Model that receives the layout graphs and returns the embeddings.
+            decoder (nn.Module): Model that reconstructs the layout image from the embedding. If not
+                provided, the reconstruction loss is not considered.
+            triplet_loss_distance_function (Callable[[torch.Tensor, torch.Tensor], torch.Tensor], optional): the 
+                distance metric to be used in the triplet loss. If not provided, euclidean distance is used.
+            triplet_loss_margin (float, optional): Margin of the triplet loss. Defaults to 1.0.
+            triplet_loss_swap (bool, optional): If True, and if the positive example is closer to the negative example
+                than the anchor is, swaps the positive example and the anchor in the loss computation (see "Learning 
+                shallow convolutional feature descriptors with triplet losses" by V. Balntas et al). Defaults to False.
+            reconstruction_loss_weight (float, optional): Weight of the reconstruction loss relative to the triplet 
+                loss. Defaults to 1.0.
+            lr (float, optional): Learning rate. Defaults to 0.001.
+        """
+        super().__init__()
+        self.encoder = encoder
+        self.decoder = decoder
+
+        self.reconstruction_loss = nn.MSELoss(reduction='sum')
+
+        self.lr = lr
+
+    def forward(self, x):
+        return self.encoder(x)
+
+    def _step(self, batch, batch_idx):
+        z = self(batch["graph"])
+        # We need to add to dimensions to z: the height and width of the image
+        y_pred = self.decoder(z.unsqueeze(-1).unsqueeze(-1))
+        # The target images are in the format [batch, size, size, dim], but we need [batch, dim, size, size]
+        y_true = batch["image"].transpose(1, -1)
+        loss = self.reconstruction_loss(y_pred, y_true)
+        return loss
+
+
+    def training_step(self, batch, batch_idx):
+        loss = self._step(batch, batch_idx)  
+        self.log("train_loss", loss, prog_bar=True, on_epoch=True)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        loss = self._step(batch, batch_idx)
+                
+        self.log("val_loss", loss, prog_bar=True)
+
+    def test_step(self, batch, batch_idx):
+        loss = self._step(batch, batch_idx)
+        self.log("test_loss", loss, prog_bar=True)
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=self.lr)
+    
+
 class LayoutGraphModelCNNNeuralRasterizer(EncoderDecoderWithTripletLoss):
     """Extends `EncoderDecoderWithTripletLoss` to instantiate the encoder and decoder models and log hparams."""
     # TODO: Review defaults
@@ -222,6 +284,96 @@ class LayoutGraphModelCNNNeuralRasterizer(EncoderDecoderWithTripletLoss):
             triplet_loss_margin=triplet_loss_margin,
             triplet_loss_swap=triplet_loss_swap,
             reconstruction_loss_weight=reconstruction_loss_weight,
+            lr=lr
+        )
+        
+        self.save_hyperparameters()
+
+
+class LayoutGraphModelCNNNeuralRasterizerEncDec(EncoderDecoder):
+    """Extends `EncoderDecoderWithTripletLoss` to instantiate the encoder and decoder models and log hparams."""
+    # TODO: Review defaults
+    def __init__(
+        self,
+        num_labels: int,
+        label_embedding_dim: int = 32,
+        bbox_embedding_layer_dims: Union[Sequence[int], int] = 32,
+        gnn_hidden_channels: int = 128,
+        gnn_num_layers: int = 3,
+        gnn_out_channels: Optional[int] = None,
+        gnn_model_cls: Type[nn.Module] = GCN,
+        use_edge_attr: bool = False,
+        num_edge_labels: Optional[int] = None,
+        edge_label_embedding_dim: Optional[int] = None,
+        readout: Optional[Callable[[torch.Tensor, Data], torch.Tensor]] = None,
+        cnn_output_dim: Optional[int] = None,
+        cnn_hidden_dim: int = 8,
+        cnn_output_size: int = 64,
+        lr: float = 0.001,
+        **kwargs
+    ):
+        """
+        Args:
+            num_labels (int): Number of classes in the node label attribute.
+            label_embedding_dim (int): dimension of the label embeddings.
+            bbox_embedding_layer_dims (Union[Sequence[int], int]): Layer dimensions of the MLP that embeds the
+                bounding box. If a single dimension is provided, the bounding box is embedded with a single linear
+                layer.
+            gnn_hidden_channels (int): Dimension of the hidden node representation in the GNN.
+            gnn_num_layers (int): Number of GNN layers.
+            gnn_out_channels (Optional[int], optional): Dimension of the output node representation of the GNN. If not
+                provided, same as gnn_hidden_channels.
+            gnn_model_cls (Type[BasicGNN], optional): Class of the GNN model, must follow the torch_geometric BasicGNN
+                format. Defaults to GCN.
+            use_edge_attr (bool, optional): If True, the edge label will be embedded and used as edge attribute. 
+                Defaults to False.
+            num_edge_labels (Optional[int], optional): Number of classes in the edge label attribute. Defaults to None.
+            edge_label_embedding_dim (Optional[int], optional): _description_. Defaults to None.
+            readout (Optional[Callable[[torch.Tensor, data.Data], torch.Tensor]]): Callable that receives the tensor of
+                node embeddings and the input graph/batch and returns the graph embeddings. If None, the tensor of node
+                embeddings is returned.
+            cnn_output_dim (Optional[int]): Number of channels of the decoded image. If not provided, the decoder is
+                not used.
+            cnn_hidden_dim (int): Hidden dimension of the decoder CNN.
+            cnn_output_size (int): Size of the decoded image.
+            triplet_loss_distance_function (Callable[[torch.Tensor, torch.Tensor], torch.Tensor], optional): the 
+                distance metric to be used in the triplet loss. If not provided, euclidean distance is used.
+            triplet_loss_margin (float, optional): Margin of the triplet loss. Defaults to 1.0.
+            triplet_loss_swap (bool, optional): If True, and if the positive example is closer to the negative example
+                than the anchor is, swaps the positive example and the anchor in the loss computation (see "Learning 
+                shallow convolutional feature descriptors with triplet losses" by V. Balntas et al). Defaults to False.
+            reconstruction_loss_weight (float, optional): Weight of the reconstruction loss relative to the triplet 
+                loss. Defaults to 1.0.
+            lr (float, optional): Learning rate. Defaults to 0.001.
+        """
+        if readout is None:
+            # The readout is mandatory in this setup
+            readout = lambda x, inputs: global_mean_pool(x, batch=inputs)
+
+        encoder = LayoutGraphModel(
+            num_labels=num_labels,
+            label_embedding_dim=label_embedding_dim,
+            bbox_embedding_layer_dims=bbox_embedding_layer_dims,
+            gnn_hidden_channels=gnn_hidden_channels,
+            gnn_num_layers=gnn_num_layers,
+            gnn_out_channels=gnn_out_channels,
+            gnn_model_cls=gnn_model_cls,
+            use_edge_attr=use_edge_attr,
+            num_edge_labels=num_edge_labels,
+            edge_label_embedding_dim=edge_label_embedding_dim,
+            readout=readout,
+            **kwargs,
+        )
+        decoder = CNNNeuralRasterizer(
+            input_dim=gnn_out_channels if gnn_out_channels is not None else gnn_hidden_channels,
+            output_dim=cnn_output_dim,
+            hidden_dim=cnn_hidden_dim,
+            output_size=cnn_output_size,
+        )
+
+        super().__init__(
+            encoder=encoder,
+            decoder=decoder,
             lr=lr
         )
         
