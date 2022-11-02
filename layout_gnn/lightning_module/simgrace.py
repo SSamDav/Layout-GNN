@@ -59,7 +59,7 @@ class SimGRACE(LightningModule):
     ) -> torch.Tensor:
         z, z_ = self(inputs, update_perturbed_encoder=update_perturbed_encoder)
         loss = self.loss_fn(z, z_)
-        
+    
         if not isinstance(loss, dict):
             if log_preffix is not None:
                 self.log(f"{log_preffix}_loss", loss, **kwargs)
@@ -83,6 +83,7 @@ class SimGRACE(LightningModule):
         z = self.encoder(inputs)
         if self.projection_head is not None:
             z = self.projection_head(z)
+            
         with torch.no_grad():  # Stop gradient on the perturbed branch
             z_ = self.perturbed_encoder(inputs)
             if self.projection_head is not None:
@@ -357,7 +358,7 @@ class LayoutGNNSimGRACERasterizer(SimGRACEEncDec):
         use_edge_attr: bool = False,
         num_edge_labels: Optional[int] = None,
         edge_label_embedding_dim: Optional[int] = None,
-        readout: Callable[[torch.Tensor, Data], torch.Tensor] = global_mean_pool,
+        readout: Callable[[torch.Tensor, torch.Tensor], torch.Tensor] = global_mean_pool,
         cnn_output_dim: int = 3,
         cnn_hidden_dim: int = 16,
         cnn_output_size: int = 64,
@@ -385,7 +386,7 @@ class LayoutGNNSimGRACERasterizer(SimGRACEEncDec):
                 Defaults to False.
             num_edge_labels (Optional[int], optional): Number of classes in the edge label attribute. Defaults to None.
             edge_label_embedding_dim (Optional[int], optional): _description_. Defaults to None.
-            readout (Optional[Callable[[torch.Tensor, data.Data], torch.Tensor]]): Callable that receives the tensor of
+            readout (Optional[Callable[[torch.Tensor, torch.Tensor], torch.Tensor]]): Callable that receives the tensor of
                 node embeddings and the input graph/batch and returns the graph embeddings. If None, the tensor of node
                 embeddings is returned.
             cnn_output_dim (int, optional): Number of channels of the decoded image. Defaults to 3.
@@ -457,7 +458,7 @@ class LayoutGNNSimGRACERasterizerNTXent(LayoutGNNSimGRACERasterizer):
         use_edge_attr: bool = False, 
         num_edge_labels: Optional[int] = None, 
         edge_label_embedding_dim: Optional[int] = None, 
-        readout: Callable[[torch.Tensor, Data], torch.Tensor] = global_mean_pool, 
+        readout: Callable[[torch.Tensor, torch.Tensor], torch.Tensor] = global_mean_pool, 
         cnn_output_dim: int = 3,
         cnn_hidden_dim: int = 16, 
         cnn_output_size: int = 64, 
@@ -510,7 +511,7 @@ class LayoutGNNSimGRACERasterizerVICReg(LayoutGNNSimGRACERasterizer):
         use_edge_attr: bool = False, 
         num_edge_labels: Optional[int] = None, 
         edge_label_embedding_dim: Optional[int] = None, 
-        readout: Callable[[torch.Tensor, Data], torch.Tensor] = global_mean_pool, 
+        readout: Callable[[torch.Tensor, torch.Tensor], torch.Tensor] = global_mean_pool, 
         cnn_output_dim: int = 3,
         cnn_hidden_dim: int = 16, 
         cnn_output_size: int = 64, 
