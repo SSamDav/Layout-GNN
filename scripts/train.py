@@ -16,7 +16,7 @@ from layout_gnn import lightning_module
 from layout_gnn.dataset import collate
 from layout_gnn.dataset import dataset as dataset_module
 from layout_gnn.dataset.transforms.core import process_data, normalize_bboxes
-from layout_gnn.dataset.transforms.image import RescaleImage
+from layout_gnn.dataset.transforms.image import ResNet18Processing
 from layout_gnn.dataset.transforms.nx import ConvertLabelsToIndexes, add_networkx
 from layout_gnn.dataset.transforms.pyg import convert_graph_to_pyg
 
@@ -45,14 +45,13 @@ if __name__ == "__main__":
         process_data,
         normalize_bboxes,
         add_networkx,
-        RescaleImage(IMAGE_SIZE, IMAGE_SIZE, allow_missing_image=True),
+        ResNet18Processing(),
         ConvertLabelsToIndexes(
             node_labels=dataset.label_color_map,
             edge_labels=("parent_of", "child_of") if config['model_config']['use_edge_attr'] else None,
         ),
         convert_graph_to_pyg,
     ])
-    
     dataset.prepare()
     config['dataloader_config']['collate_fn'] = getattr(collate , config['dataloader_config']['collate_fn'])
     data_loader = DataLoader(

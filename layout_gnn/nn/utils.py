@@ -15,8 +15,12 @@ def get_mlp(*features, num_layers: Optional[int] = None, activation_cls: Type[nn
             features = features[:dif]
 
     assert len(features) >= 2, "At least in and out features must be provided"
-    layers = [nn.Linear(*features[:2])]
-    for i in range(1, len(features) - 1):
-        layers.append(activation_cls())
+    layers = []
+    for i in range(0, len(features) - 2):
         layers.append(nn.Linear(*features[i:i+2]))
+        layers.append(nn.BatchNorm1d(features[i + 1]))
+        layers.append(activation_cls())
+    
+    layers.append(nn.Linear(*features[-2:], bias=False))
+    
     return nn.Sequential(*layers)

@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import torch
 from torch_geometric.data import Batch
@@ -11,6 +11,14 @@ def default_data_collate(batch):
 def pyg_data_collate(batch: List[Dict[str, Any]]) -> Batch:
     """Creates a torch_geometric Batch from a list of samples."""
     return Batch.from_data_list([sample["graph"] for sample in batch])
+
+
+def image_data_collate(batch: List[Dict[str, Any]]) -> torch.Tensor:
+    return torch.stack([torch.as_tensor(sample["image"], dtype=torch.float) for sample in batch])
+
+
+def graph_image_tuple_collate(batch: List[Dict[str, Any]]) -> Tuple[Batch, torch.Tensor]:
+    return pyg_data_collate(batch), image_data_collate(batch)
 
 
 def pyg_triplets_data_collate(batch: List[Dict[str, Any]]) -> Dict[str, Union[Batch, torch.Tensor]]:

@@ -4,7 +4,7 @@ from typing import Callable, Optional, Sequence, Type, Union
 
 import torch
 import torch.nn as nn
-from torch_geometric import data
+from torch_geometric.data import Data
 from torch_geometric.nn import GCN, MLP
 from torch_geometric.nn.models.basic_gnn import BasicGNN
 
@@ -22,7 +22,7 @@ class LayoutGraphModel(nn.Module):
         use_edge_attr: bool = False,
         num_edge_labels: Optional[int] = None,
         edge_label_embedding_dim: Optional[int] = None,
-        readout: Optional[Callable[[torch.Tensor, data.Data], torch.Tensor]] = None,
+        readout: Optional[Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = None,
         **kwargs,
     ) -> None:
         """
@@ -42,9 +42,9 @@ class LayoutGraphModel(nn.Module):
                 Defaults to False.
             num_edge_labels (Optional[int], optional): Number of classes in the edge label attribute. Defaults to None.
             edge_label_embedding_dim (Optional[int], optional): _description_. Defaults to None.
-            readout (Optional[Callable[[torch.Tensor, data.Data], torch.Tensor]]): Callable that receives the tensor of
-                node embeddings and the input graph/batch and returns the graph embeddings. If None, the tensor of node
-                embeddings is returned.
+            readout (Optional[Callable[[torch.Tensor, torch.Tensor], torch.Tensor]]): Callable that receives the tensor
+                of node embeddings and the tensor of batch indexes and returns the graph embeddings. If None, the
+                tensor of node embeddings is returned.
         Raises:
             TypeError: If `use_edge_attr` is True (and the dimensions are provided) but the given `gnn_model_cls` does
                 not support edge attributes.
@@ -75,7 +75,7 @@ class LayoutGraphModel(nn.Module):
 
         self.readout = readout
 
-    def forward(self, inputs: data.Data) -> torch.Tensor:
+    def forward(self, inputs: Data) -> torch.Tensor:
         """
         Args:
             inputs (data.Data): Graph or batch of graphs to be embedded

@@ -4,6 +4,7 @@ import requests
 import shutil
 import pandas as pd
 from pathlib import Path
+from PIL import Image
 from typing import Any, Dict, List, Optional, Sequence, Union
 
 from google.cloud import storage
@@ -77,7 +78,7 @@ class RICOSemanticAnnotationsDataset(Dataset):
             
         sample = {'data': json_file, 'filename': file.stem}
         if not self._only_data:
-            image = io.imread(file.with_suffix('.png'))[:,: , :3] # Removing the Alpha channel
+            image = Image.open(file.with_suffix('.png')).convert('RGB')
             sample['image'] = image 
             
         if self.transform:
